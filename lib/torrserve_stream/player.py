@@ -41,7 +41,7 @@ class Player(xbmc.Player):
 		self.info_label = xbmcgui.ControlLabel(x, y, w, h, '', textColor='0xFF00EE00', font='font16')
 		self.info_label_bg = xbmcgui.ControlLabel(x+2, y+2, w, h, '', textColor='0xAA000000', font='font16')
 		
-		self.engine = engine.Engine(uri, log=_log)
+		self.engine = engine.Engine(uri=uri, path=path, data=data, log=_log)
 		
 		s = self.engine.start(index)
 
@@ -56,6 +56,9 @@ class Player(xbmc.Player):
 		success = False
 		counter = 0
 		while True:
+			if counter > 60:
+				return False
+
 			if pDialog.iscanceled() :
 				pDialog.close()
 				self.engine.drop()
@@ -64,6 +67,10 @@ class Player(xbmc.Player):
 			time.sleep(0.5)
 			st = self.engine.stat()
 			_log(st)
+
+			if 'message' in st:
+				counter += 1
+				continue
 
 			downSpeed = humanizeSize(st['DownloadSpeed'])
 			preloadedBytes = st['PreloadedBytes']

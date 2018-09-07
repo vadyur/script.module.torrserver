@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import requests
 import json
 
@@ -30,7 +32,7 @@ class BaseEngine(object):
 	def drop(self):
 		self.request('drop', data={'Hash': self.hash})
 		
-	def upload(self, filename):
+	def upload_file(self, filename):
 		files = {'file': open(filename, 'rb')}
 		return self.request('upload', files=files)
 		
@@ -49,7 +51,13 @@ class BaseEngine(object):
 		files = {'file': (name, data)}
 
 		r = self.request('upload', files=files)
-		self.hash = r.content
+		self.hash = r.json()[0]
+
+		self.log('Engine upload')
+		self.log(self.hash)
+		self.log(unicode(r.headers))
+		self.log(r.text)
+
 		return r.status_code == requests.codes.ok
 
 
