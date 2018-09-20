@@ -2,7 +2,7 @@
 
 import requests
 import json
-
+import time
 
 def no_log(s):
 	pass
@@ -93,20 +93,27 @@ class Engine(BaseEngine):
 		t.start()
 
 	def start(self, start_index=None):
-		files = self.list()
-		
-		self.log(unicode(files))
 
-		if start_index is None:
-			start_index = 0
+		for n in range(5):
+			try:
+				files = self.list()
 		
-		for torrent in files:
-			if self.hash == torrent['Hash']:
-				file = torrent['Files'][start_index]
-				preload = file['Preload']
+				self.log(unicode(files))
 
-				self.start_preload(self.make_url(preload))
-				return
+				if start_index is None:
+					start_index = 0
+		
+				for torrent in files:
+					if self.hash == torrent['Hash']:
+						file = torrent['Files'][start_index]
+						preload = file['Preload']
+
+						self.start_preload(self.make_url(preload))
+						return
+				break
+			except:
+				time.sleep(0.5)
+				continue
 
 	def torrent_stat(self):
 		lst = self.list()
@@ -122,4 +129,23 @@ class Engine(BaseEngine):
 	def play_url(self, index):
 		fs = self.file_stat(index)
 		return self.make_url(fs['Link'])
+
+	def progress(self):
+		info = self.stat()
+		percent = float(info['downloaded']) * 100 / info['size'];
+
+	def buffer_progress(self):
+		st = self.stat()
+
+		self.log(unicode(st))
+
+		preloadedBytes = st.get('PreloadedBytes', 0)
+		preloadSize = st.get('PreloadSize', 0)
+		if preloadSize > 0 and preloadedBytes > 0:
+			prc = preloadedBytes * 100 / preloadSize
+			if prc >= 100:
+				prc = 100
+			return prc
+
+		return 0
 
