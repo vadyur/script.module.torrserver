@@ -29,9 +29,12 @@ class BaseEngine(object):
 	def list(self):
 		return self.request('list').json()
 
+	def rem(self):
+		self.request('rem', data={'Hash': self.hash})
+
 	def drop(self):
 		self.request('drop', data={'Hash': self.hash})
-		
+
 	def upload_file(self, filename):
 		files = {'file': open(filename, 'rb')}
 		return self.request('upload', files=files)

@@ -22,10 +22,16 @@
     <Compile Include="lib\torrserve_stream\engine.py" />
     <Compile Include="lib\torrserve_stream\player.py" />
     <Compile Include="lib\torrserve_stream\__init__.py" />
+    <Compile Include="lib\torrserve_stream\settings.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="lib\" />
     <Folder Include="lib\torrserve_stream" />
+    <Folder Include="resources\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="addon.xml" />
+    <Content Include="resources\settings.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>
