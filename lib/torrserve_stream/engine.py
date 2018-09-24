@@ -114,7 +114,8 @@ class Engine(BaseEngine):
 						self.start_preload(self.make_url(preload))
 						return
 				break
-			except:
+			except BaseException as e:
+				self.log(unicode(e))
 				time.sleep(0.5)
 				continue
 
