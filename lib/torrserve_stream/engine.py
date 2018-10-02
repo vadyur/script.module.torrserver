@@ -95,6 +95,18 @@ class Engine(BaseEngine):
 		t = threading.Thread(target=download_stream)
 		t.start()
 
+	def id_to_files_index(self, file_id):
+		st = self.stat()
+		index = 0
+		for item in st.get('FileStats', []):
+			if item['Id'] == file_id:
+				self.log('Index for id {} is {}'.format(file_id, index))
+				return index
+			index += 1
+
+		self.log('Index not found, just return file_id')
+		return file_id
+
 	def start(self, start_index=None):
 
 		for n in range(5):
@@ -105,6 +117,8 @@ class Engine(BaseEngine):
 
 				if start_index is None:
 					start_index = 0
+
+				start_index = self.id_to_files_index(start_index)
 		
 				for torrent in files:
 					if self.hash == torrent['Hash']:
@@ -128,6 +142,7 @@ class Engine(BaseEngine):
 
 	def file_stat(self, index):
 		ts = self.torrent_stat()
+		index = self.id_to_files_index(index)
 		return ts['Files'][index]
 
 	def play_url(self, index):
