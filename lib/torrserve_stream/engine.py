@@ -7,6 +7,11 @@ import time
 def no_log(s):
 	pass
 
+def url2path(url):
+	import urllib
+	from urlparse import urlparse
+	return urllib.url2pathname(urlparse(url).path)
+
 class BaseEngine(object):
 
 	def make_url(self, path):
@@ -77,7 +82,10 @@ class Engine(BaseEngine):
 				self.add(uri)
 				return
 
-		if path:
+			if uri.startswith('file:'):
+				path = url2path(uri)
+
+		if path and not data:
 			with open(path, 'rb') as f:
 				data = f.read()
 
@@ -167,4 +175,11 @@ class Engine(BaseEngine):
 			return prc
 
 		return 0
+
+if __name__ == '__main__':
+	uri = 'file:///C:/Users/Vd/%D0%A4%D0%AB%D0%92%D0%90%5C%D1%82%D0%B5%D1%81%D1%82.html'
+
+	path = url2path(uri).decode('utf-8')
+
+	print path
 
