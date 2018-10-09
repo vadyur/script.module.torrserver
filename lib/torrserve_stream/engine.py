@@ -108,7 +108,7 @@ class Engine(BaseEngine):
 		index = 0
 		for item in st.get('FileStats', []):
 			if item['Id'] == file_id:
-				self.log('Index for id {} is {}'.format(file_id, index))
+				self.log('Index for id {0} is {1}'.format(file_id, index))
 				return index
 			index += 1
 

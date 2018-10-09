@@ -21,7 +21,7 @@ def humanizeSize(size):
 	return HUMANFMT % (size,  UNITS[-1])
 
 def _log(s):
-	xbmc.log (u'Torrserver: {}'.format(s))
+	xbmc.log (u'Torrserver: {0}'.format(s))
 
 
 class Player(xbmc.Player):
@@ -98,7 +98,7 @@ class Player(xbmc.Player):
 			downSpeed = humanizeSize(st['DownloadSpeed'])
 			preloadedBytes = st['PreloadedBytes']
 			preloadSize = st['PreloadSize']
-			line2 = u'S:{} A:{} T:{}'.format(st['ConnectedSeeders'], st['ActivePeers'], st['TotalPeers'])
+			line2 = u'S:{0} A:{1} T:{2}'.format(st['ConnectedSeeders'], st['ActivePeers'], st['TotalPeers'])
 			line3 = u"D: {0}/сек [{1}/{2}]".format(downSpeed, humanizeSize(preloadedBytes), humanizeSize(preloadSize))
 			if preloadSize > 0 and preloadedBytes > 0:
 				prc = preloadedBytes * 100 / preloadSize
@@ -133,10 +133,10 @@ class Player(xbmc.Player):
 				dl_speed	= int(info['DownloadSpeed'])
 				percent = float(downloaded) * 100 / size;
 				if percent >= 0:
-					heading = u"{} МB из {} МB - {}".format(downloaded/1024/1024, size/1024/1024, int(percent)) + r'%' + '\n'
+					heading = u"{0} МB из {1} МB - {2}".format(downloaded/1024/1024, size/1024/1024, int(percent)) + r'%' + '\n'
 					if percent < 100:
-						heading += u"Скорость загрузки: {} KB/сек\n".format(dl_speed/1024)
-						heading += u"Сиды: {}    Пиры: {}".format(info['ConnectedSeeders'], info['ActivePeers'])
+						heading += u"Скорость загрузки: {0} KB/сек\n".format(dl_speed/1024)
+						heading += u"Сиды: {0}    Пиры: {1}".format(info['ConnectedSeeders'], info['ActivePeers'])
 
 					self.info_label.setLabel(heading)
 					self.info_label_bg.setLabel(heading)
