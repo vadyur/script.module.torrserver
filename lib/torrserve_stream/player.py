@@ -21,7 +21,15 @@ def humanizeSize(size):
 	return HUMANFMT % (size,  UNITS[-1])
 
 def _log(s):
-	xbmc.log (u'Torrserver: {0}'.format(s))
+	if isinstance(s, BaseException):
+		import sys
+		exc_type, exc_val, exc_tb = sys.exc_info()
+		import traceback
+		lines = traceback.format_exception(exc_type, exc_val, exc_tb, limit=10)
+		for line in lines:
+			xbmc.log (u'Torrserver: {0}'.format(line))
+	else:
+		xbmc.log (u'Torrserver: {0}'.format(s))
 
 
 class Player(xbmc.Player):
@@ -71,7 +79,7 @@ class Player(xbmc.Player):
 
 		except BaseException as e:
 			_log('************************ ERROR ***********************')
-			_log(unicode(e))
+			_log(e)
 
 	def prebuffer(self):
 		pDialog = xbmcgui.DialogProgress()
@@ -142,7 +150,7 @@ class Player(xbmc.Player):
 					self.info_label_bg.setLabel(heading)
 			except BaseException as e:
 				_log('************************ ERROR ***********************')
-				_log(unicode(e))
+				_log(e)
 				
 	def loop(self):
 		while not self.isPlaying():

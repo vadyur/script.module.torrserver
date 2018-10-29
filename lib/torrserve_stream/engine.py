@@ -137,9 +137,11 @@ class Engine(BaseEngine):
 						return
 				break
 			except BaseException as e:
-				self.log(unicode(e))
+				self.log(e)
 				time.sleep(0.5)
 				continue
+
+		self.log('Preload not started')
 
 	def torrent_stat(self):
 		lst = self.list()
