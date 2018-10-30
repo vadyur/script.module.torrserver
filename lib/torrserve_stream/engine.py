@@ -19,12 +19,12 @@ class BaseEngine(object):
 
 	def request(self, name, method='POST', data=None, files=None):
 		url = self.make_url('/torrent/' + name)
-		
+
 		self.log(unicode(url))
-		
+
 		if data:
 			data = json.dumps(data)
-		
+
 		r = requests.post(url, data=data, files=files)
 		return r
 
@@ -43,16 +43,16 @@ class BaseEngine(object):
 	def upload_file(self, filename):
 		files = {'file': open(filename, 'rb')}
 		return self.request('upload', files=files)
-		
+
 	def add(self, uri):
 		r = self.request('add', data={'Link': uri, "DontSave": False})
 		self.hash = r.content
-		
+
 		self.log('Engine add')
 		self.log(self.hash)
 		self.log(unicode(r.headers))
 		self.log(r.text)
-		
+
 		return r.status_code == requests.codes.ok
 
 	def upload(self, name, data):
@@ -70,16 +70,29 @@ class BaseEngine(object):
 
 
 class Engine(BaseEngine):
+	def _wait_for_data(self, timeout=10):
+		self.log('_wait_for_data')
+		files = self.list()
+		for n in range(timeout*2):
+			st = self.stat()
+			self.log(st['TorrentStatusString'])
+
+			if st['TorrentStatusString'] != 'Torrent working':
+				time.sleep(0.5)
+			else:
+				break
+
 	def __init__(self, uri=None, path=None, data=None, host='127.0.0.1', port=8090, log=no_log):
 		self.uri = uri
 		self.host = host
 		self.port = port
 		self.hash = None
 		self.log = log
-		
+
 		if uri:
 			if uri.startswith('magnet:') or uri.startswith('http:') or uri.startswith('https:'):
 				self.add(uri)
+				self._wait_for_data()
 				return
 
 			if uri.startswith('file:'):
@@ -92,6 +105,7 @@ class Engine(BaseEngine):
 		if data:
 			name = path or 'Torrserver engine'
 			self.upload(name, data)
+			self._wait_for_data()
 
 	def start_preload(self, url):
 		def download_stream():
@@ -106,7 +120,7 @@ class Engine(BaseEngine):
 	def id_to_files_index(self, file_id):
 		st = self.stat()
 		index = 0
-		for item in st.get('FileStats', []):
+		for item in st.get('FileStats') or []:
 			if item['Id'] == file_id:
 				self.log('Index for id {0} is {1}'.format(file_id, index))
 				return index
@@ -116,18 +130,19 @@ class Engine(BaseEngine):
 		return file_id
 
 	def start(self, start_index=None):
+		self.log('Engine start')
 
 		for n in range(5):
+			self.log('Try # {0}'.format(n))
 			try:
 				files = self.list()
-		
 				self.log(unicode(files))
 
 				if start_index is None:
 					start_index = 0
 
 				start_index = self.id_to_files_index(start_index)
-		
+
 				for torrent in files:
 					if self.hash == torrent['Hash']:
 						file = torrent['Files'][start_index]
@@ -145,7 +160,7 @@ class Engine(BaseEngine):
 
 	def torrent_stat(self):
 		lst = self.list()
-		
+
 		for torr in lst:
 			if self.hash == torr['Hash']:
 				return torr
