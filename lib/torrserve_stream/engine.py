@@ -28,6 +28,27 @@ class BaseEngine(object):
 		r = requests.post(url, data=data, files=files)
 		return r
 
+	def echo(self):
+		url = self.make_url('/echo')
+		try:
+			r = requests.get(url)
+		except requests.ConnectionError as e:
+			self.log(unicode(e))
+			return False
+
+		if r.status_code == requests.codes.ok:
+			self.log(r.text)
+			return True
+
+		try:
+			r.raise_for_status()
+		except requests.HTTPError as e:
+			self.log(unicode(e))
+		except:
+			pass
+
+		return False
+
 	def stat(self):
 		return self.request('stat', data={'Hash': self.hash}).json()
 		
@@ -75,12 +96,16 @@ class Engine(BaseEngine):
 		files = self.list()
 		for n in range(timeout*2):
 			st = self.stat()
-			self.log(st['TorrentStatusString'])
+			try:
+				self.log(st['TorrentStatusString'])
 
-			if st['TorrentStatusString'] != 'Torrent working':
+				if st['TorrentStatusString'] != 'Torrent working':
+					time.sleep(0.5)
+				else:
+					break
+			except KeyError:
+				self.log('"TorrentStatusString" not in stat')
 				time.sleep(0.5)
-			else:
-				break
 
 	def __init__(self, uri=None, path=None, data=None, host='127.0.0.1', port=8090, log=no_log):
 		self.uri = uri
@@ -88,6 +113,11 @@ class Engine(BaseEngine):
 		self.port = port
 		self.hash = None
 		self.log = log
+		self.success = True
+
+		if not self.echo():
+			self.success = False
+			return
 
 		if uri:
 			if uri.startswith('magnet:') or uri.startswith('http:') or uri.startswith('https:'):

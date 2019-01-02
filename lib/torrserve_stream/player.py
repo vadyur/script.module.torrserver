@@ -62,7 +62,13 @@ class Player(xbmc.Player):
 			s = Settings()
 
 			self.engine = engine.Engine(uri=uri, path=path, data=data, log=_log, host=s.host, port=s.port)
-		
+
+			if not self.engine.success:
+				dialog = xbmcgui.Dialog()
+				dialog.notification('TorrServer', 'Server not started. Please start server or reconfigure settings',
+									xbmcgui.NOTIFICATION_INFO, 5000)
+				return
+
 			s = self.engine.start(index)
 
 			if self.prebuffer():
