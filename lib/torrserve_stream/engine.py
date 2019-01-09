@@ -149,11 +149,25 @@ class Engine(BaseEngine):
 
 	def id_to_files_index(self, file_id):
 		st = self.stat()
+		ts = self.torrent_stat()
 		index = 0
 		for item in st.get('FileStats') or []:
 			if item['Id'] == file_id:
-				self.log('Index for id {0} is {1}'.format(file_id, index))
-				return index
+				self.log(unicode(item['Path']))
+
+				files_index = 0
+				for fl in ts['Files']:
+					self.log(unicode(fl['Name']))
+					if item['Path'] == fl['Name']:
+						return files_index
+					files_index += 1
+
+				files_index = 0
+				for fl in ts['Files']:
+					if item['Lenght'] == fl['Size']:
+						return files_index
+					files_index += 1
+
 			index += 1
 
 		self.log('Index not found, just return file_id')
@@ -224,9 +238,22 @@ class Engine(BaseEngine):
 		return 0
 
 if __name__ == '__main__':
-	uri = 'file:///C:/Users/Vd/%D0%A4%D0%AB%D0%92%D0%90%5C%D1%82%D0%B5%D1%81%D1%82.html'
+	path = 'D:\\book7.torrent'
+	file_id = 2
 
-	path = url2path(uri).decode('utf-8')
+	def log(s):
+		with open('engine.log', 'a') as f:
+			try:
+				f.write(s.encode('utf-8'))
+			except:
+				f.write(s)
+			f.write('\n')
 
-	print path
+	e = Engine(path=path, host='192.168.1.5', log=log)
+
+	play_url = e.play_url(file_id)
+
+	print(play_url)
+
+	
 
