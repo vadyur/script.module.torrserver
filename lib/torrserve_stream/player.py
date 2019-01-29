@@ -34,17 +34,10 @@ def _log(s):
 
 class Player(xbmc.Player):
 
-	def __init__(self, uri=None, path=None, data=None, index=None):
+	def __init__(self, uri=None, path=None, data=None, index=None, sort_index=None, name=None):
 		#import vsdbg; vsdbg._bp()
 
 		try:
-			try:
-				index = int(index)
-			except:
-				index = 0
-
-			self.file_id = index
-
 			xbmc.Player.__init__(self)
 			self.show_overlay = False
 
@@ -69,13 +62,25 @@ class Player(xbmc.Player):
 									xbmcgui.NOTIFICATION_INFO, 5000)
 				return
 
-			s = self.engine.start(index)
+			ts = self.engine.torrent_stat()
+			if len(ts['Files']) == 1:
+				sort_index = 0
+				index = 0
+			else:
+				if sort_index is None:
+					if name is not None:
+						sort_index = self.engine.get_ts_index(name)
+					elif index is not None:
+						sort_index = self.engine.id_to_files_index(index)
+
+			self.file_id = sort_index
+			s = self.engine.start(sort_index)
 
 			if self.prebuffer():
 				_log('Prebuffer success')
 				#self.play(self.engine.play_url(index))
 
-				playable_url = self.engine.play_url(index)
+				playable_url = self.engine.play_url(sort_index)
 				handle = int(sys.argv[1])
 				list_item = xbmcgui.ListItem(path=playable_url)
 

@@ -118,6 +118,8 @@ class Engine(BaseEngine):
 		self.log = log
 		self.success = True
 		self.playable_items = []
+		
+		# import vsdbg; vsdbg._bp()		
 
 		if not self.echo():
 			self.success = False
@@ -145,6 +147,9 @@ class Engine(BaseEngine):
 
 		if self.playable_items:
 			return self.playable_items
+
+		if not self.data:
+			raise NotImplementedError('magnet links not supported for torrent indexes, use sorted_index or name')
 
 		import os
 		from bencode import bdecode
@@ -198,10 +203,18 @@ class Engine(BaseEngine):
 		self.log('_magnet2data')
 
 		try:
-			import libtorrent as lt
+			#import libtorrent as lt
+			from python_libtorrent import get_libtorrent
+			lt = get_libtorrent()			
+			
 		except ImportError:
 			self.log('_magnet2data: import error')
 			return None
+			
+		except:
+			self.log('_magnet2data: other error')
+			return None
+			
 
 		import tempfile, sys, shutil
 		from time import sleep
@@ -243,7 +256,7 @@ class Engine(BaseEngine):
 
 	def add(self, uri):
 		if uri.startswith('magnet:'):
-			self.data = self._magnet2data(uri)
+			pass  # self.data = self._magnet2data(uri)
 		else:
 			r = requests.get(uri)
 			if r.status_code == requests.codes.ok:
@@ -290,7 +303,7 @@ class Engine(BaseEngine):
 				if start_index is None:
 					start_index = 0
 
-				start_index = self.id_to_files_index(start_index)
+				# start_index = self.id_to_files_index(start_index)
 
 				for torrent in files:
 					if self.hash == torrent['Hash']:
@@ -316,8 +329,16 @@ class Engine(BaseEngine):
 
 	def file_stat(self, index):
 		ts = self.torrent_stat()
-		index = self.id_to_files_index(index)
+		# index = self.id_to_files_index(index)
 		return ts['Files'][index]
+
+	def get_ts_index(self, name):
+		ts = self.torrent_stat()
+		index = 0
+		for f in ts['Files']:
+			if f['Name'] == name:
+				return index
+			index += 0
 
 	def play_url(self, index):
 		fs = self.file_stat(index)
