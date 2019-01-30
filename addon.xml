@@ -3,7 +3,6 @@
     <requires>
         <import addon="xbmc.python" version="2.14.0"/>
 		    <import addon="script.module.requests" optional="false"/>
-			<import addon="script.module.libtorrent" optional="true"/>
         <import addon="script.module.vsdbg" optional="true"/>
     </requires>
   

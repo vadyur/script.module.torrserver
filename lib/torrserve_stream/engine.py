@@ -202,8 +202,8 @@ class Engine(BaseEngine):
 		self.log('-'*100)
 		self.log('_magnet2data')
 
+		'''
 		try:
-			#import libtorrent as lt
 			from python_libtorrent import get_libtorrent
 			lt = get_libtorrent()			
 			
@@ -249,6 +249,7 @@ class Engine(BaseEngine):
 
 		torcontent = lt.bencode(torfile.generate())
 		return torcontent
+		'''
 
 	def upload(self, name, data):
 		self.data = data
