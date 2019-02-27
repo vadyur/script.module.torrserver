@@ -164,12 +164,12 @@ class Player(xbmc.Player):
 				_log(e)
 				
 	def loop(self):
-		while not self.isPlaying():
+		while not xbmc.abortRequested and not self.isPlaying():
 			xbmc.sleep(100)
 
 		_log('************************ START Playing ***********************')
 			
-		while self.isPlaying():
+		while not xbmc.abortRequested and self.isPlaying():
 			xbmc.sleep(1000)
 			self.UpdateProgress()
 
