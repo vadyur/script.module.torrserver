@@ -74,7 +74,7 @@ class Player(xbmc.Player):
 						sort_index = self.engine.id_to_files_index(index)
 
 			self.file_id = sort_index
-			s = self.engine.start(sort_index)
+			self.engine.start(sort_index)
 
 			if self.prebuffer():
 				_log('Prebuffer success')
@@ -87,6 +87,10 @@ class Player(xbmc.Player):
 				xbmcplugin.setResolvedUrl(handle, True, list_item)
 
 				self.loop()
+
+			if not s.save_in_database:
+				_log("Remove from DB")
+				self.engine.rem()
 
 		except BaseException as e:
 			_log('************************ ERROR ***********************')

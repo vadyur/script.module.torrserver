@@ -3,5 +3,6 @@
     <category label="Настройки">
       <setting id="host" type="text" label="host" default="127.0.0.1"/>
       <setting id="port" type="number" label="port" default="8090"/>
+      <setting id="save_in_database" type="bool" label="Save torrent in DB" default="true"/>
     </category>
 </settings>
