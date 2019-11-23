@@ -27,9 +27,9 @@ def _log(s):
 		import traceback
 		lines = traceback.format_exception(exc_type, exc_val, exc_tb, limit=10)
 		for line in lines:
-			xbmc.log (u'Torrserver: {0}'.format(line))
+			xbmc.log (u'Torrserver: {0}'.format(line).encode('utf8'))
 	else:
-		xbmc.log (u'Torrserver: {0}'.format(s))
+		xbmc.log (u'Torrserver: {0}'.format(s).encode('utf8'))
 
 
 class Player(xbmc.Player):
