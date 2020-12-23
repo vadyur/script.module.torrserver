@@ -1,8 +1,14 @@
 # coding: utf-8
 
+from sys import version_info
 import requests
 import json
 import time
+
+def _u(s):
+	if version_info >= (3, 0):
+		return s
+	return unicode(s)
 
 def no_log(s):
 	pass
@@ -33,7 +39,7 @@ class BaseEngine(object):
 		try:
 			r = requests.get(url)
 		except requests.ConnectionError as e:
-			self.log(unicode(e))
+			self.log(_u(e))
 			return False
 
 		if r.status_code == requests.codes.ok:
@@ -43,7 +49,7 @@ class BaseEngine(object):
 		try:
 			r.raise_for_status()
 		except requests.HTTPError as e:
-			self.log(unicode(e))
+			self.log(_u(e))
 		except:
 			pass
 
@@ -72,9 +78,12 @@ class BaseEngine(object):
 		r = self.request('add', data={'Link': uri, "DontSave": False})
 		self.hash = r.content
 
+		if isinstance(self.hash, bytes):
+			self.hash = self.hash.decode("utf-8")
+
 		self.log('Engine add')
 		self.log(self.hash)
-		self.log(unicode(r.headers))
+		self.log(_u(r.headers))
 		self.log(r.text)
 
 		return r.status_code == requests.codes.ok
@@ -87,7 +96,7 @@ class BaseEngine(object):
 
 		self.log('Engine upload')
 		self.log(self.hash)
-		self.log(unicode(r.headers))
+		self.log(_u(r.headers))
 		self.log(r.text)
 
 		return r.status_code == requests.codes.ok
@@ -285,7 +294,7 @@ class Engine(BaseEngine):
 
 		files_index = 0
 		for fl in ts['Files']:
-			self.log(unicode(fl['Name']))
+			self.log(_u(fl['Name']))
 			if pi['name'] == fl['Name']:
 				return files_index
 			files_index += 1
@@ -299,7 +308,7 @@ class Engine(BaseEngine):
 			self.log('Try # {0}'.format(n))
 			try:
 				files = self.list()
-				self.log(unicode(files))
+				self.log(_u(files))
 
 				if start_index is None:
 					start_index = 0
@@ -352,7 +361,7 @@ class Engine(BaseEngine):
 	def buffer_progress(self):
 		st = self.stat()
 
-		self.log(unicode(st))
+		self.log(_u(st))
 
 		preloadedBytes = st.get('PreloadedBytes', 0)
 		preloadSize = st.get('PreloadSize', 0)
