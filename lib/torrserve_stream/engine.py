@@ -23,10 +23,23 @@ class BaseEngine(object):
 	def make_url(self, path):
 		return 'http://' + self.host + ':' + str(self.port) + path
 
-	def request(self, name, method='POST', data=None, files=None):
-		url = self.make_url('/torrent/' + name)
+	@property
+	def is_v2(self):
+		if 'version' not in self.__dict__:
+			self.version = self.stat()
 
-		self.log(unicode(url))
+		return self.version >= (1, 2)
+
+	def request(self, name, method='POST', data=None, files=None):
+
+		url = self.make_url('/torrents' if self.is_v2 else '/torrent/' + name)
+
+		self.log(_u(url))
+
+		if self.is_v2:
+			if not data:
+				data = {}
+			data['action'] = name
 
 		if data:
 			data = json.dumps(data)
@@ -44,7 +57,10 @@ class BaseEngine(object):
 
 		if r.status_code == requests.codes.ok:
 			self.log(r.text)
-			return True
+			ver = r.text
+			ver = ver.replace('_', '.')
+			ver = [int(n) for n in ver.split('.')]
+			return tuple( ver[:3] )
 
 		try:
 			r.raise_for_status()
@@ -76,7 +92,12 @@ class BaseEngine(object):
 
 	def add(self, uri):
 		r = self.request('add', data={'Link': uri, "DontSave": False})
-		self.hash = r.content
+
+		if self.is_v2:
+			info = json.loads(r.content)
+			self.hash = info['hash']
+		else:
+			self.hash = r.content
 
 		if isinstance(self.hash, bytes):
 			self.hash = self.hash.decode("utf-8")
@@ -130,7 +151,8 @@ class Engine(BaseEngine):
 		
 		# import vsdbg; vsdbg._bp()		
 
-		if not self.echo():
+		self.version = self.echo()
+		if not self.version:
 			self.success = False
 			return
 
@@ -272,7 +294,7 @@ class Engine(BaseEngine):
 			if r.status_code == requests.codes.ok:
 				self.data = r.content
 
-		BaseEngine.add(self, uri)
+		return BaseEngine.add(self, uri)
 
 	def start_preload(self, url):
 		def download_stream():
