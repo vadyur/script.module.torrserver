@@ -5,6 +5,55 @@ import requests
 import json
 import time
 
+class V2toV1Adapter(object):
+
+	key_equivalents = {
+		'TorrentStatusString': 'stat_string',
+		'TorrentStatus': 'stat',
+		'Length': 'torrent_size',
+		'Files': 'file_stats',
+	}
+
+	def __init__(self, v2):
+		self.v2 = v2
+
+	def get(self, key, def_val=None):
+		try:
+			return self.__getitem__(key)
+		except KeyError:
+			return def_val
+
+	def __getitem__(self, key):
+		if key in self.v2:
+			return self.v2[key]
+
+		def get_element(value):
+			if isinstance(value, dict):
+				return V2toV1Adapter(value)
+			elif isinstance(value, list):
+				return [ get_element(item) for item in value ]
+			return value
+
+		def get_value(v2key):
+			if v2key in self.v2:
+				value = self.v2[v2key] 
+				return get_element(value)
+			else:
+				raise KeyError
+
+		ke = V2toV1Adapter.key_equivalents
+		if key in ke:
+			return get_value(ke[key])
+
+		v2key = key[0].lower()
+		for ch in key[1:]:
+			if ch.isupper():
+				v2key += '_' + ch.lower()
+			else:
+				v2key += ch
+
+		return get_value(v2key)
+
 def _u(s):
 	if version_info >= (3, 0):
 		return s
@@ -32,6 +81,12 @@ class BaseEngine(object):
 
 	def request(self, name, method='POST', data=None, files=None):
 
+		if self.is_v2 and name == 'upload':
+			url = self.make_url('/torrent/upload')
+			data = {'save': True}
+			r = requests.post(url, data=data, files=files)
+			return r
+
 		url = self.make_url('/torrents' if self.is_v2 else '/torrent/' + name)
 
 		self.log(_u(url))
@@ -44,7 +99,10 @@ class BaseEngine(object):
 		if data:
 			data = json.dumps(data)
 
-		r = requests.post(url, data=data, files=files)
+		if method=='POST':
+			r = requests.post(url, data=data, files=files)
+		else:
+			r = requests.get(url, data=data, files=files)
 		return r
 
 	def echo(self):
@@ -72,10 +130,16 @@ class BaseEngine(object):
 		return False
 
 	def stat(self):
-		return self.request('stat', data={'Hash': self.hash}).json()
+		if self.is_v2:
+			return V2toV1Adapter(self.request('get', data={'Hash': self.hash}).json())
+		else:
+			return self.request('stat', data={'Hash': self.hash}).json()
 
 	def get(self):
-		return self.request('get', data={'Hash': self.hash}).json()
+		if self.is_v2:
+			return V2toV1Adapter(self.request('get', data={'Hash': self.hash}).json())
+		else:
+			return self.request('get', data={'Hash': self.hash}).json()
 		
 	def list(self):
 		return self.request('list').json()
@@ -113,7 +177,9 @@ class BaseEngine(object):
 		files = {'file': (name, data)}
 
 		r = self.request('upload', files=files)
-		self.hash = r.json()[0]
+		res = r.json()[0]
+
+		self.hash = res['hash'] if self.is_v2 else res
 
 		self.log('Engine upload')
 		self.log(self.hash)
@@ -126,7 +192,7 @@ class BaseEngine(object):
 class Engine(BaseEngine):
 	def _wait_for_data(self, timeout=10):
 		self.log('_wait_for_data')
-		files = self.list()
+		#files = self.list()
 		for n in range(timeout*2):
 			st = self.stat()
 			try:
@@ -284,7 +350,7 @@ class Engine(BaseEngine):
 
 	def upload(self, name, data):
 		self.data = data
-		BaseEngine.upload(self, name, data)
+		return BaseEngine.upload(self, name, data)
 
 	def add(self, uri):
 		if uri.startswith('magnet:'):
@@ -323,19 +389,19 @@ class Engine(BaseEngine):
 
 		return file_id
 
-	def start(self, start_index=None):
-		self.log('Engine start')
+	def _start_v2(self, start_index=None):
+		preload_url = self.make_url("/stream?link={}&index={}&preload".format(
+			self.hash, start_index
+		))
 
+		self.start_preload(preload_url)
+
+	def _start_v1(self, start_index=None):
 		for n in range(5):
 			self.log('Try # {0}'.format(n))
 			try:
 				files = self.list()
 				self.log(_u(files))
-
-				if start_index is None:
-					start_index = 0
-
-				# start_index = self.id_to_files_index(start_index)
 
 				for torrent in files:
 					if self.hash == torrent['Hash']:
@@ -352,7 +418,21 @@ class Engine(BaseEngine):
 
 		self.log('Preload not started')
 
+	def start(self, start_index=None):
+		self.log('Engine start')
+
+		if start_index is None:
+			start_index = 0
+
+		if self.is_v2:
+			self._start_v2()
+		else:
+			self._start_v1()
+
 	def torrent_stat(self):
+		if self.is_v2:
+			return self.stat()
+
 		lst = self.list()
 
 		for torr in lst:
@@ -361,7 +441,6 @@ class Engine(BaseEngine):
 
 	def file_stat(self, index):
 		ts = self.torrent_stat()
-		# index = self.id_to_files_index(index)
 		return ts['Files'][index]
 
 	def get_ts_index(self, name):
@@ -374,11 +453,16 @@ class Engine(BaseEngine):
 
 	def play_url(self, index):
 		fs = self.file_stat(index)
+
+		if self.is_v2:
+			return self.make_url("/stream/{}?link={}&index={}&play".format(
+											fs['path'], self.hash, index+1))
+
 		return self.make_url(fs['Link'])
 
 	def progress(self):
 		info = self.stat()
-		percent = float(info['downloaded']) * 100 / info['size'];
+		percent = float(info['downloaded']) * 100 / info['size']
 
 	def buffer_progress(self):
 		st = self.stat()

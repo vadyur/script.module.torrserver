@@ -78,7 +78,6 @@ class Player(xbmc.Player):
 
 			if self.prebuffer():
 				_log('Prebuffer success')
-				#self.play(self.engine.play_url(index))
 
 				playable_url = self.engine.play_url(sort_index)
 				handle = int(sys.argv[1])
@@ -154,7 +153,7 @@ class Player(xbmc.Player):
 				size		= int(info['FileStats'][self.file_id]['Length'])
 				downloaded	= int(info['LoadedSize'])
 				dl_speed	= int(info['DownloadSpeed'])
-				percent = float(downloaded) * 100 / size;
+				percent = float(downloaded) * 100 / size
 				if percent >= 0:
 					heading = u"{0} МB из {1} МB - {2}".format(downloaded/1024/1024, size/1024/1024, int(percent)) + r'%' + '\n'
 					if percent < 100:
