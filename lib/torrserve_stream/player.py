@@ -111,24 +111,35 @@ class Player(xbmc.Player):
 
             time.sleep(0.5)
             st = self.engine.stat()
-            _log(st)
+            #_log(st)
 
             if 'message' in st:
                 counter += 1
                 continue
 
-            downSpeed = humanizeSize(st['DownloadSpeed'])
-            preloadedBytes = st['PreloadedBytes']
-            preloadSize = st['PreloadSize']
-            line2 = u'S:{0} A:{1} T:{2}'.format(st['ConnectedSeeders'], st['ActivePeers'], st['TotalPeers'])
-            line3 = u"D: {0}/сек [{1}/{2}]".format(downSpeed, humanizeSize(preloadedBytes), humanizeSize(preloadSize))
+            downSpeed = humanizeSize(st.get('DownloadSpeed', 0))
+            preloadedBytes = st.get('PreloadedBytes', 0)
+            preloadSize = st.get('PreloadSize', 0)
+            line2 = u'S:{0} A:{1} T:{2}'.format(
+                st.get('ConnectedSeeders', 0),
+                st.get('ActivePeers', 0),
+                st.get('TotalPeers', 0))
+
+            line3 = u"D: {0}/сек [{1}/{2}]".format(
+                downSpeed, 
+                humanizeSize(preloadedBytes), 
+                humanizeSize(preloadSize))
+
             if preloadSize > 0 and preloadedBytes > 0:
                 prc = preloadedBytes * 100 / preloadSize
                 if prc > 100:
                     prc = 100
                 pDialog.update(prc, line2, line3)
 
-                if preloadedBytes >= preloadSize:
+                stat_s = st.get('TorrentStatusString')
+                _log(stat_s)
+                if  (preloadedBytes >= preloadSize) or \
+                    ( prc > 90 and stat_s == 'Torrent working' ):
                     success = True
                     pDialog.close()
                     break

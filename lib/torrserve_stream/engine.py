@@ -23,6 +23,25 @@ class V2toV1Adapter(object):
         except KeyError:
             return def_val
 
+    def _get_v2_key(self, key):
+        v2key = key[0].lower()
+        for ch in key[1:]:
+            if ch.isupper():
+                v2key += '_' + ch.lower()
+            else:
+                v2key += ch
+        return v2key
+
+    def __contains__(self, item):
+        if item in self.v2:
+            return True
+
+        ke = V2toV1Adapter.key_equivalents
+        if item in ke and ke[item] in self.v2:
+            return True
+
+        return self._get_v2_key(item) in self.v2
+
     def __getitem__(self, key):
         if key in self.v2:
             return self.v2[key]
@@ -45,12 +64,7 @@ class V2toV1Adapter(object):
         if key in ke:
             return get_value(ke[key])
 
-        v2key = key[0].lower()
-        for ch in key[1:]:
-            if ch.isupper():
-                v2key += '_' + ch.lower()
-            else:
-                v2key += ch
+        v2key = self._get_v2_key(key)
 
         return get_value(v2key)
 
@@ -425,9 +439,9 @@ class Engine(BaseEngine):
             start_index = 0
 
         if self.is_v2:
-            self._start_v2()
+            self._start_v2(start_index)
         else:
-            self._start_v1()
+            self._start_v1(start_index)
 
     def torrent_stat(self):
         if self.is_v2:
