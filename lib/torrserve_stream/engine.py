@@ -89,7 +89,7 @@ class BaseEngine(object):
     @property
     def is_v2(self):
         if 'version' not in self.__dict__:
-            self.version = self.stat()
+            self.version = self.echo()
 
         return self.version >= (1, 2)
 
