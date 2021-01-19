@@ -228,6 +228,7 @@ class Engine(BaseEngine):
         self.log = log
         self.success = True
         self.playable_items = []
+        self.data = None
         
         # import vsdbg; vsdbg._bp()		
 
@@ -260,7 +261,14 @@ class Engine(BaseEngine):
             return self.playable_items
 
         if not self.data:
-            raise NotImplementedError('magnet links not supported for torrent indexes, use sorted_index or name')
+            st = self.stat()
+            if 'RealIdFileStats' not in st:
+                raise NotImplementedError('magnet links not supported for torrent indexes, use sorted_index or name')
+            if st.get('RealIdFileStats') is None:
+                raise NotImplementedError('RealIdFileStats is disabled in TorrServer 1.1.77_6, please enable it')
+            for i in st['RealIdFileStats']: #it only torrserver 1.1.77_6 with RealIdFileStats and &ind=
+                self.playable_items.append({'index': i['Id'], 'name': i['Path'], 'size': i['Length']})
+            return self.playable_items
 
         import os
         from bencode import bdecode
@@ -378,7 +386,7 @@ class Engine(BaseEngine):
 
     def start_preload(self, url):
         def download_stream():
-            req = requests.get(url, stream=True)
+            req = requests.get(url, stream=True, allow_redirects=False)
             for chunk in req.iter_content(chunk_size=128):
                 self.log('dowload chunk: 128')
 
@@ -517,5 +525,5 @@ if __name__ == '__main__':
         play_url = e.play_url(file_id)
         log(play_url)
 
-    
+
 
