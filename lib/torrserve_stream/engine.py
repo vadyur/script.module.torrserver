@@ -131,8 +131,8 @@ class BaseEngine(object):
             self.log(r.text)
             ver = r.text
             ver = ver.replace('_', '.')
-            ver = [int(n) for n in ver.split('.')]
-            return tuple( ver[:3] )
+            ver = [int(n) for n in ver.split('.')[:3]]
+            return tuple(ver)
 
         try:
             r.raise_for_status()
