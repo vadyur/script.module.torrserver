@@ -161,7 +161,10 @@ class Player(xbmc.Player):
         if self.show_overlay:
             info = self.engine.stat()
             try:
-                size		= int(info['FileStats'][self.file_id]['Length'])
+                fstats = info['FileStats']
+                item = fstats[self.file_id]
+                _log(item)
+                size		= int(item['Length'])
                 downloaded	= int(info['LoadedSize'])
                 dl_speed	= int(info['DownloadSpeed'])
                 percent = float(downloaded) * 100 / size

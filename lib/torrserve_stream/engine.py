@@ -12,10 +12,14 @@ class V2toV1Adapter(object):
         'TorrentStatus': 'stat',
         'Length': 'torrent_size',
         'Files': 'file_stats',
+        'FileStats': 'file_stats',
     }
 
     def __init__(self, v2):
         self.v2 = v2
+
+    def __str__(self):
+        return self.v2.__str__()
 
     def get(self, key, def_val=None):
         try:
@@ -62,7 +66,10 @@ class V2toV1Adapter(object):
 
         ke = V2toV1Adapter.key_equivalents
         if key in ke:
-            return get_value(ke[key])
+            try:
+                return get_value(ke[key])
+            except KeyError:
+                pass
 
         v2key = self._get_v2_key(key)
 
@@ -514,12 +521,16 @@ if __name__ == '__main__':
             f.write('\n')
 
     # host='192.168.1.5'
-    e = Engine(path=path, log=log)
+    #e = Engine(path=path, log=log)
     #e = Engine(uri='http://rutor.is/download/657889', log=log)
-    #e = Engine(uri='magnet:?xt=urn:btih:a60f1bf7abf47af05ff8bd2b5f33fff65e7d7159&dn=rutor.info_%D0%9C%D0%B0%D0%BD%D0%B8%D1%84%D0%B5%D1%81%D1%82+%2F+%D0%94%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F+%2F+Manifest+%5B01%D1%8501-11+%D0%B8%D0%B7+18%5D+%282018%29+WEB-DL+720p+%7C+LostFilm&tr=udp://opentor.org:2710&tr=udp://opentor.org:2710&tr=http://retracker.local/announce', log=log)
+    e = Engine(uri='magnet:?xt=urn:btih:a60f1bf7abf47af05ff8bd2b5f33fff65e7d7159&dn=rutor.info_%D0%9C%D0%B0%D0%BD%D0%B8%D1%84%D0%B5%D1%81%D1%82+%2F+%D0%94%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F+%2F+Manifest+%5B01%D1%8501-11+%D0%B8%D0%B7+18%5D+%282018%29+WEB-DL+720p+%7C+LostFilm&tr=udp://opentor.org:2710&tr=udp://opentor.org:2710&tr=http://retracker.local/announce', log=log)
 
     g = e.get()
     s = e.stat()
+
+    fstats = s['FileStats']
+    item = fstats[0]
+    size = int(item['Length'])
 
     for file_id in range(0, 8):
         play_url = e.play_url(file_id)
