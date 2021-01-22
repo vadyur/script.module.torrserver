@@ -88,6 +88,14 @@ def url2path(url):
     from urlparse import urlparse
     return urllib.url2pathname(urlparse(url).path)
 
+def encode_url(s):
+    import urllib
+
+    if version_info >= (3, 0):
+        return urllib.parse.quote(s.encode('utf8'))
+    else:
+        return urllib.quote(s.encode('utf8'))
+
 class BaseEngine(object):
 
     def make_url(self, path):
@@ -420,7 +428,7 @@ class Engine(BaseEngine):
 
     def _start_v2(self, start_index=None):
         preload_url = self.make_url("/stream?link={}&index={}&preload".format(
-            self.hash, start_index
+            self.hash, start_index+1
         ))
 
         self.start_preload(preload_url)
@@ -484,8 +492,17 @@ class Engine(BaseEngine):
         fs = self.file_stat(index)
 
         if self.is_v2:
-            return self.make_url("/stream/{}?link={}&index={}&play".format(
-                                            fs['path'], self.hash, index+1))
+            r = requests.get(self.make_url("/stream/?link={}&m3u".format(self.hash)))
+            if r.status_code == requests.codes.ok:
+                for line in r.text.splitlines():
+                    if line.startswith('http://'):
+                        find_str = "&index={}&".format( fs['id'] )
+                        if find_str in line:
+                            return line
+            else:
+                quoted_path = encode_url(fs['path'])
+                return self.make_url("/stream/{}?link={}&index={}&play".format(
+                                                quoted_path, self.hash, index+1))
 
         return self.make_url(fs['Link'])
 
@@ -525,8 +542,14 @@ if __name__ == '__main__':
     #e = Engine(uri='http://rutor.is/download/657889', log=log)
     e = Engine(uri='magnet:?xt=urn:btih:a60f1bf7abf47af05ff8bd2b5f33fff65e7d7159&dn=rutor.info_%D0%9C%D0%B0%D0%BD%D0%B8%D1%84%D0%B5%D1%81%D1%82+%2F+%D0%94%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F+%2F+Manifest+%5B01%D1%8501-11+%D0%B8%D0%B7+18%5D+%282018%29+WEB-DL+720p+%7C+LostFilm&tr=udp://opentor.org:2710&tr=udp://opentor.org:2710&tr=http://retracker.local/announce', log=log)
 
+    e.start()
+
     g = e.get()
     s = e.stat()
+
+    while 'FileStats' not in s:
+        time.sleep(0.5)
+        s = e.stat()
 
     fstats = s['FileStats']
     item = fstats[0]
