@@ -184,7 +184,13 @@ class BaseEngine(object):
         return self.request('upload', files=files)
 
     def add(self, uri):
-        r = self.request('add', data={'Link': uri, "DontSave": False})
+        params = {'Link': uri}
+        if self.is_v2:
+            params['save_to_db'] = True
+        else:
+            params['DontSave'] = False
+
+        r = self.request('add', data=params)
 
         if self.is_v2:
             info = json.loads(r.content)
