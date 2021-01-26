@@ -139,7 +139,7 @@ class Player(xbmc.Player):
                 stat_s = st.get('TorrentStatusString')
                 _log(stat_s)
                 if  (preloadedBytes >= preloadSize) or \
-                    ( prc > 90 and stat_s == 'Torrent working' ):
+                    ( prc > 80 and stat_s == 'Torrent working' ):
                     success = True
                     pDialog.close()
                     break

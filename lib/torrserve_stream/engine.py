@@ -15,6 +15,10 @@ class V2toV1Adapter(object):
         'FileStats': 'file_stats',
     }
 
+    deprecated = {
+        'UploadSpeed':  0,
+    }
+
     def __init__(self, v2):
         self.v2 = v2
 
@@ -49,6 +53,9 @@ class V2toV1Adapter(object):
     def __getitem__(self, key):
         if key in self.v2:
             return self.v2[key]
+
+        if key in V2toV1Adapter.deprecated:
+            return V2toV1Adapter.deprecated[key]
 
         def get_element(value):
             if isinstance(value, dict):
@@ -212,7 +219,11 @@ class BaseEngine(object):
         files = {'file': (name, data)}
 
         r = self.request('upload', files=files)
-        res = r.json()[0]
+
+        try:
+            res = r.json()[0]
+        except KeyError:
+            res = r.json()
 
         self.hash = res['hash'] if self.is_v2 else res
 
@@ -527,6 +538,10 @@ class Engine(BaseEngine):
             prc = preloadedBytes * 100 / preloadSize
             if prc >= 100:
                 prc = 100
+
+            stat_s = st.get('TorrentStatusString')
+            if prc > 80 and stat_s == 'Torrent working':
+                prc = 100
             return prc
 
         return 0
@@ -546,7 +561,9 @@ if __name__ == '__main__':
     # host='192.168.1.5'
     #e = Engine(path=path, log=log)
     #e = Engine(uri='http://rutor.is/download/657889', log=log)
-    e = Engine(uri='magnet:?xt=urn:btih:a60f1bf7abf47af05ff8bd2b5f33fff65e7d7159&dn=rutor.info_%D0%9C%D0%B0%D0%BD%D0%B8%D1%84%D0%B5%D1%81%D1%82+%2F+%D0%94%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F+%2F+Manifest+%5B01%D1%8501-11+%D0%B8%D0%B7+18%5D+%282018%29+WEB-DL+720p+%7C+LostFilm&tr=udp://opentor.org:2710&tr=udp://opentor.org:2710&tr=http://retracker.local/announce', log=log)
+    #e = Engine(uri='magnet:?xt=urn:btih:a60f1bf7abf47af05ff8bd2b5f33fff65e7d7159&dn=rutor.info_%D0%9C%D0%B0%D0%BD%D0%B8%D1%84%D0%B5%D1%81%D1%82+%2F+%D0%94%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F+%2F+Manifest+%5B01%D1%8501-11+%D0%B8%D0%B7+18%5D+%282018%29+WEB-DL+720p+%7C+LostFilm&tr=udp://opentor.org:2710&tr=udp://opentor.org:2710&tr=http://retracker.local/announce', log=log)
+
+    e = Engine(path='/Users/vd/.kodi/temp/lazyf1.torrent')
 
     e.start()
 
@@ -556,6 +573,27 @@ if __name__ == '__main__':
     while 'FileStats' not in s:
         time.sleep(0.5)
         s = e.stat()
+
+    while True:
+        try:
+            st = e.stat()
+            downloaded = int(st['LoadedSize'] / 1024 / 1024)
+            print(downloaded)
+            size = int(st['FileStats'][0]['Length'] / 1024 / 1024)
+            print(size)
+            dl_speed = int(st['DownloadSpeed'] / 1024)
+            print(dl_speed)
+            ul_speed = int(st['UploadSpeed'] / 1024)
+            print(ul_speed)
+            num_seeds =	st['ConnectedSeeders']
+            print(num_seeds)
+            num_peers =	st['ActivePeers']
+            print(num_peers)
+
+            if downloaded > size:
+                break
+        except:
+            pass
 
     fstats = s['FileStats']
     item = fstats[0]
