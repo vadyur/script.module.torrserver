@@ -539,12 +539,29 @@ class Engine(BaseEngine):
             if prc >= 100:
                 prc = 100
 
-            stat_s = st.get('TorrentStatusString')
-            if prc > 80 and stat_s == 'Torrent working':
+            stat_id = st.get('TorrentStatus')
+            if prc > 0 and stat_id != 2: # 2 - 'Torrent preload'
                 prc = 100
             return prc
 
         return 0
+
+    @property
+    def title(self):
+        if self.is_v2:
+            return self.stat().get('title')
+        else:
+            return self.stat().get('Name')
+
+    @property
+    def poster(self):
+        if self.is_v2:
+            return self.stat().get('poster')
+        else:
+            ts = self.torrent_stat()
+            info = ts.get('Info')
+            if info:
+                return info.get('poster_path')
 
 if __name__ == '__main__':
     path = 'D:\\test.torrent'
