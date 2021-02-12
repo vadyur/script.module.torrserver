@@ -190,10 +190,14 @@ class BaseEngine(object):
         files = {'file': open(filename, 'rb')}
         return self.request('upload', files=files)
 
-    def add(self, uri):
+    def add(self, uri, title=None, poster=None):
         params = {'Link': uri}
         if self.is_v2:
             params['save_to_db'] = True
+            if title:
+                params['title'] = title
+            if poster:
+                params['poster'] = poster
         else:
             params['DontSave'] = False
 
@@ -252,7 +256,7 @@ class Engine(BaseEngine):
                 self.log('"TorrentStatusString" not in stat')
                 time.sleep(0.5)
 
-    def __init__(self, uri=None, path=None, data=None, host='127.0.0.1', port=8090, log=no_log):
+    def __init__(self, uri=None, path=None, data=None, host='127.0.0.1', port=8090, log=no_log, title=None, poster=None):
         self.uri = uri
         self.host = host
         self.port = port
@@ -271,7 +275,7 @@ class Engine(BaseEngine):
 
         if uri:
             if uri.startswith('magnet:') or uri.startswith('http:') or uri.startswith('https:'):
-                self.add(uri)
+                self.add(uri, title, poster)
                 self._wait_for_data()
                 return
 
@@ -406,7 +410,7 @@ class Engine(BaseEngine):
         self.data = data
         return BaseEngine.upload(self, name, data)
 
-    def add(self, uri):
+    def add(self, uri, title=None, poster=None):
         if uri.startswith('magnet:'):
             pass  # self.data = self._magnet2data(uri)
         else:
@@ -414,7 +418,7 @@ class Engine(BaseEngine):
             if r.status_code == requests.codes.ok:
                 self.data = r.content
 
-        return BaseEngine.add(self, uri)
+        return BaseEngine.add(self, uri, title=title, poster=poster)
 
     def start_preload(self, url):
         def download_stream():
