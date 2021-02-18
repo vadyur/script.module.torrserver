@@ -5,6 +5,10 @@ import requests
 import json
 import time
 
+if version_info >= (3, 0):
+    from urllib.parse import urlparse
+else:
+    from urlparse import urlparse   # type: ignore
 class V2toV1Adapter(object):
 
     key_equivalents = {
@@ -85,14 +89,13 @@ class V2toV1Adapter(object):
 def _u(s):
     if version_info >= (3, 0):
         return s
-    return unicode(s)
+    return unicode(s)   # type: ignore
 
 def no_log(s):
     pass
 
 def url2path(url):
     import urllib
-    from urlparse import urlparse
     return urllib.url2pathname(urlparse(url).path)
 
 def encode_url(s):
