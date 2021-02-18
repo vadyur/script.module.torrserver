@@ -178,7 +178,10 @@ class BaseEngine(object):
             return self.request('get', data={'Hash': self.hash}).json()
         
     def list(self):
-        return self.request('list').json()
+        if self.is_v2:
+            return [V2toV1Adapter(item) for item in self.request('list').json()]
+        else:
+            return self.request('list').json()
 
     def rem(self):
         self.request('rem', data={'Hash': self.hash})
@@ -566,6 +569,23 @@ class Engine(BaseEngine):
             info = ts.get('Info')
             if info:
                 return info.get('poster_path')
+
+    @staticmethod
+    def extract_hash_from_magnet(magnet):
+        # 'magnet:?xt=urn:btih:3b68e98ec4522d7a2c3dae1614bb32d3e8a41155&dn=rutor.info&tr=udp%3A%2F%2Fopentor.org%3A2710&tr=udp%3A%2F%2Fopentor.org%3A2710&tr=http%3A%2F%2Fretracker.local%2Fannounce'
+        result = magnet.replace('magnet:?xt=urn:btih:', '')
+        result = result.split('&')[0]
+        return result
+
+    @staticmethod
+    def extract_hash_from_play_url(url):
+        # '/torrent/play/Avatar.2009.Extended.UHD.Re-Grade.4000nit.2160p.HEVC.HDR.IVA_RUS.UKR.ENG_.ExKinoRay.mkv?link=magnet:?xt=urn:btih:3b68e98ec4522d7a2c3dae1614bb32d3e8a41155&dn=rutor.info&file=0'
+        n = url.index('magnet:?xt=urn:btih:')
+        if n >= 0:
+            magnet = url[n:]
+            magnet = magnet.split('&file=')[0]
+            return Engine.extract_hash_from_magnet(magnet)
+
 
 if __name__ == '__main__':
     path = 'D:\\test.torrent'
