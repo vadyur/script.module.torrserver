@@ -579,13 +579,13 @@ class Engine(BaseEngine):
 
     @staticmethod
     def extract_hash_from_play_url(url):
-        # '/torrent/play/Avatar.2009.Extended.UHD.Re-Grade.4000nit.2160p.HEVC.HDR.IVA_RUS.UKR.ENG_.ExKinoRay.mkv?link=magnet:?xt=urn:btih:3b68e98ec4522d7a2c3dae1614bb32d3e8a41155&dn=rutor.info&file=0'
-        n = url.index('magnet:?xt=urn:btih:')
-        if n >= 0:
-            magnet = url[n:]
-            magnet = magnet.split('&file=')[0]
-            return Engine.extract_hash_from_magnet(magnet)
+        prefixes = ['torrent/view/', 'link=', 'xt=urn:btih:']
 
+        import re
+        for prefix in prefixes:
+            m = re.search(prefix + r'(\w{40})', url) 
+            if m:
+                return m.group(1)
 
 if __name__ == '__main__':
     path = 'D:\\test.torrent'
