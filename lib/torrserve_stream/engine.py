@@ -206,6 +206,13 @@ class BaseEngine(object):
                 params['poster'] = poster
         else:
             params['DontSave'] = False
+            info = {}
+            if title:
+                info['title'] = title
+            if poster:
+                info['poster_path'] = poster
+            if info:
+                params['Info'] = json.dumps(info, ensure_ascii=False)
 
         r = self.request('add', data=params)
 
@@ -561,7 +568,12 @@ class Engine(BaseEngine):
         if self.is_v2:
             return self.stat().get('title')
         else:
-            return self.stat().get('Name')
+            ts = self.torrent_stat()
+            info = ts.get('Info')
+            if info:
+                info = json.loads(info)
+                if info:
+                    return info.get('title')
 
     @property
     def poster(self):
@@ -571,7 +583,9 @@ class Engine(BaseEngine):
             ts = self.torrent_stat()
             info = ts.get('Info')
             if info:
-                return info.get('poster_path')
+                info = json.loads(info)
+                if info:
+                    return info.get('poster_path')
 
     @staticmethod
     def extract_hash_from_magnet(magnet):
