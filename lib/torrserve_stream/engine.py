@@ -155,6 +155,10 @@ class BaseEngine(object):
         if r.status_code == requests.codes.ok:
             self.log(r.text)
             ver = r.text
+
+            if ver.startswith('MatriX'):
+                ver = ver.replace('MatriX', '2.0')
+
             ver = ver.replace('_', '.')
             ver = [int(n) for n in ver.split('.')[:3]]
             return tuple(ver)
