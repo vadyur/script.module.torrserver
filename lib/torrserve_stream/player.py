@@ -1,7 +1,8 @@
 # coding: utf-8
 
+from __future__ import absolute_import
 
-import engine
+from . import engine
 import xbmc, xbmcgui, xbmcplugin, time, sys
 
 def humanizeSize(size):
