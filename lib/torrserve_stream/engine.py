@@ -48,7 +48,7 @@ class V2toV1Adapter(object):
         if item in self.v2:
             return True
 
-        ke = V2toV1Adapter.key_equivalents
+        ke = self.key_equivalents
         if item in ke and ke[item] in self.v2:
             return True
 
@@ -58,12 +58,12 @@ class V2toV1Adapter(object):
         if key in self.v2:
             return self.v2[key]
 
-        if key in V2toV1Adapter.deprecated:
-            return V2toV1Adapter.deprecated[key]
+        if key in self.deprecated:
+            return self.deprecated[key]
 
         def get_element(value):
             if isinstance(value, dict):
-                return V2toV1Adapter(value)
+                return self.__class__(value)
             elif isinstance(value, list):
                 return [ get_element(item) for item in value ]
             return value
@@ -75,7 +75,7 @@ class V2toV1Adapter(object):
             else:
                 raise KeyError
 
-        ke = V2toV1Adapter.key_equivalents
+        ke = self.key_equivalents
         if key in ke:
             try:
                 return get_value(ke[key])
@@ -85,6 +85,16 @@ class V2toV1Adapter(object):
         v2key = self._get_v2_key(key)
 
         return get_value(v2key)
+
+class V2toV1ListAdapter(V2toV1Adapter):
+    key_equivalents = {
+        #'TorrentStatusString': 'stat_string',
+        #'TorrentStatus': 'stat',
+        'Length': 'torrent_size',
+        'Files': 'file_stats',
+        'FileStats': 'file_stats',
+        #'Name': 'title',
+    }
 
 def _u(s):
     if version_info >= (3, 0):
@@ -142,6 +152,13 @@ class BaseEngine(object):
             r = requests.post(url, data=data, files=files)
         else:
             r = requests.get(url, data=data, files=files)
+
+        if r.ok:
+            pass
+        else:
+            self.log('!!! Wrong request !!!')
+            self.log('Error code {}'.format(r.status_code))
+
         return r
 
     def echo(self):
@@ -155,6 +172,10 @@ class BaseEngine(object):
         if r.status_code == requests.codes.ok:
             self.log(r.text)
             ver = r.text
+
+            if ver.startswith('MatriX'):
+                ver = ver.replace('MatriX', '2.0')
+
             ver = ver.replace('_', '.')
             ver = [int(n) for n in ver.split('.')[:3]]
             return tuple(ver)
@@ -182,9 +203,12 @@ class BaseEngine(object):
         
     def list(self):
         if self.is_v2:
-            return [V2toV1Adapter(item) for item in self.request('list').json()]
+            return [V2toV1ListAdapter(item) for item in self.request('list').json()]
         else:
             return self.request('list').json()
+
+    def restart(self):
+        self.request('restart', method='GET')
 
     def rem(self):
         self.request('rem', data={'Hash': self.hash})
@@ -196,7 +220,7 @@ class BaseEngine(object):
         files = {'file': open(filename, 'rb')}
         return self.request('upload', files=files)
 
-    def add(self, uri, title=None, poster=None):
+    def add(self, uri, title=None, poster=None, data=None):
         params = {'Link': uri}
         if self.is_v2:
             params['save_to_db'] = True
@@ -269,14 +293,14 @@ class Engine(BaseEngine):
                 self.log('"TorrentStatusString" not in stat')
                 time.sleep(0.5)
 
-    def __init__(self, uri=None, path=None, data=None, host='127.0.0.1', port=8090, log=no_log, title=None, poster=None):
+    def __init__(self, uri=None, path=None, data=None, host='127.0.0.1', port=8090, log=no_log, hash=None, title=None, poster=None):
         self.uri = uri
         self.host = host
         self.port = port
-        self.hash = None
+        self.hash = hash
         self.log = log
         self.success = True
-        self.playable_items = []
+        self._playable_items = []
         self.data = None
         
         # import vsdbg; vsdbg._bp()		
@@ -304,10 +328,14 @@ class Engine(BaseEngine):
             self.upload(name, data)
             self._wait_for_data()
 
+    @property
+    def playable_items(self):
+        return self._get_playable_items()
+
     def _get_playable_items(self):
 
-        if self.playable_items:
-            return self.playable_items
+        if self._playable_items:
+            return self._playable_items
 
         if not self.data:
             st = self.stat()
@@ -316,8 +344,8 @@ class Engine(BaseEngine):
             if st.get('RealIdFileStats') is None:
                 raise NotImplementedError('RealIdFileStats is disabled in TorrServer 1.1.77_6, please enable it')
             for i in st['RealIdFileStats']: #it only torrserver 1.1.77_6 with RealIdFileStats and &ind=
-                self.playable_items.append({'index': i['Id'], 'name': i['Path'], 'size': i['Length']})
-            return self.playable_items
+                self._playable_items.append({'index': i['Id'], 'name': i['Path'], 'size': i['Length']})
+            return self._playable_items
 
         import os
         from bencode import bdecode
@@ -358,13 +386,13 @@ class Engine(BaseEngine):
                     name = u'/'.join([info_name, name])
                     size = f['length']
 
-                    self.playable_items.append({'index': i, 'name': name, 'size': size})
+                    self._playable_items.append({'index': i, 'name': name, 'size': size})
             else:
-                self.playable_items = [ {'index': 0, 'name': info_name, 'size': info['length'] } ]
+                self._playable_items = [ {'index': 0, 'name': info_name, 'size': info['length'] } ]
         except UnicodeDecodeError:
             return None
 
-        return self.playable_items
+        return self._playable_items
 
     def _magnet2data(self, magnet):
         self.log('-'*100)
@@ -423,7 +451,7 @@ class Engine(BaseEngine):
         self.data = data
         return BaseEngine.upload(self, name, data)
 
-    def add(self, uri, title=None, poster=None):
+    def add(self, uri, title=None, poster=None, data=None):
         if uri.startswith('magnet:'):
             pass  # self.data = self._magnet2data(uri)
         else:
@@ -500,19 +528,33 @@ class Engine(BaseEngine):
         else:
             self._start_v1(start_index)
 
-    def torrent_stat(self):
-        if self.is_v2:
-            return self.stat()
-
+    def _torrent_stat_v1(self):
         lst = self.list()
 
         for torr in lst:
             if self.hash == torr['Hash']:
                 return torr
 
+    def torrent_stat(self):
+        if self.is_v2:
+            return self.stat()
+        else:
+            return self._torrent_stat_v1()
+
     def file_stat(self, index):
         ts = self.torrent_stat()
         return ts['Files'][index]
+
+    def files(self):
+        ts = self.torrent_stat()
+        id = 0
+        for f in ts['Files']:
+            yield { 'file_id': id, 
+                    'path': f['path'] if self.is_v2 else f['Name'],
+                    'size': f['length'] if self.is_v2 else f['Size'],
+                    #'viewed': f['viewed'] if self.is_v2 else f['Viewed']
+            }
+            id += 1
 
     def get_ts_index(self, name):
         ts = self.torrent_stat()
@@ -587,6 +629,18 @@ class Engine(BaseEngine):
                 if info:
                     return info.get('poster_path')
 
+    @property
+    def fanart(self):
+        if self.is_v2:
+            return None # self.stat().get('fanart')
+        else:
+            ts = self.torrent_stat()
+            info = ts.get('Info')
+            if info:
+                info = json.loads(info)
+                if info:
+                    return info.get('backdrop_path')
+
     @staticmethod
     def extract_hash_from_magnet(magnet):
         # 'magnet:?xt=urn:btih:3b68e98ec4522d7a2c3dae1614bb32d3e8a41155&dn=rutor.info&tr=udp%3A%2F%2Fopentor.org%3A2710&tr=udp%3A%2F%2Fopentor.org%3A2710&tr=http%3A%2F%2Fretracker.local%2Fannounce'
@@ -603,6 +657,79 @@ class Engine(BaseEngine):
             m = re.search(prefix + r'(\w{40})', url) 
             if m:
                 return m.group(1)
+
+    def get_art(self):
+        """ returns art """
+        art = {}
+
+        poster = self.poster
+        if poster:
+            art = {
+                'thumb': poster,
+                'poster': poster,
+            }
+
+        fanart = self.fanart
+        if fanart:
+            art['fanart'] = fanart
+
+        return art
+
+    def _get_video_info_v1(self):
+        ts = self.torrent_stat()
+        info = ts.get('Info')
+        if info:
+            info = json.loads(info)
+            if info:
+                return self._get_video_info_from_data(info)
+        return {}
+
+    def _get_video_info_v2(self):
+        info = None
+        ts = self.stat()
+        data = ts.get('data', {})
+        if data:
+            info = json.loads(data)
+        if info:
+            return self._get_video_info_from_data(info)
+        else:
+            return {'title': self.title}
+
+    def _get_video_info_from_data(self, info):
+        video_info = {}
+        if 'title' in info:
+            video_info = {'title': info['title']}
+        if 'overview' in info:
+            video_info['plot'] = info.get('overview', '')
+        if 'year' in info:
+            video_info['year'] = int(info.get('year'))
+        if 'genres' in info:
+            genres = []
+            for g in info['genres']:
+                genres.append(g['name'])
+            if genres: 
+                video_info['genre'] = genres
+        if 'original_title' in info:
+            video_info['originaltitle'] = info.get('original_title')
+        if 'vote_average' in info:
+            video_info['rating'] = info.get('vote_average', 0.0)
+        if 'origin_country' in info:
+            country = ''
+            for g in info.get('origin_country'):
+                country += g + ', '
+            if country: video_info['studio'] = country.strip(' ,')
+        if 'runtime' in info:
+            video_info['duration'] = info.get('runtime', 0) / 1000
+        return video_info
+
+    def get_video_info(self):
+        """ returns video info """
+        if self.is_v2:
+            return self._get_video_info_v2()
+        else:
+            return self._get_video_info_v1()
+
+
 
 if __name__ == '__main__':
     path = 'D:\\test.torrent'
