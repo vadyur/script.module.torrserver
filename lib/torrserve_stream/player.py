@@ -5,6 +5,30 @@ from __future__ import absolute_import
 from . import engine
 import xbmc, xbmcgui, xbmcplugin, time, sys
 
+class OurDialogProgress(xbmcgui.DialogProgress):
+    def create(self, heading, line1="", line2="", line3=""):
+        try:
+            xbmcgui.DialogProgress.create(self, heading, line1, line2, line3)
+        except TypeError:
+            message = line1
+            if line2:
+                message += '\n' + line2
+            if line3:
+                message += '\n' + line3
+            xbmcgui.DialogProgress.create(self, heading, message)
+
+    def update(self, percent, line1="", line2="", line3=""):
+        try:
+            xbmcgui.DialogProgress.update(self, int(percent), line1, line2, line3)
+        except TypeError:
+            message = line1
+            if line2:
+                message += '\n' + line2
+            if line3:
+                message += '\n' + line3
+            xbmcgui.DialogProgress.update(self, int(percent), message)
+
+
 def humanizeSize(size):
     B = u"б"
     KB = u"Кб"
@@ -22,15 +46,21 @@ def humanizeSize(size):
     return HUMANFMT % (size,  UNITS[-1])
 
 def _log(s):
+    import sys
+    def make_message(_s):
+        if sys.version_info < (3, 0):
+            return u'Torrserver: {0}'.format(unicode(_s)).encode('utf8')
+        else:
+            return 'Torrserver: {0}'.format(str(_s))
+
     if isinstance(s, BaseException):
-        import sys
         exc_type, exc_val, exc_tb = sys.exc_info()
         import traceback
         lines = traceback.format_exception(exc_type, exc_val, exc_tb, limit=10)
         for line in lines:
-            xbmc.log (u'Torrserver: {0}'.format(line).encode('utf8'))
+            xbmc.log (make_message(line))
     else:
-        xbmc.log (u'Torrserver: {0}'.format(s).encode('utf8'))
+        xbmc.log (make_message(s))
 
 
 class Player(xbmc.Player):
@@ -52,7 +82,7 @@ class Player(xbmc.Player):
             self.info_label = xbmcgui.ControlLabel(x, y, w, h, '', textColor='0xFF00EE00', font='font16')
             self.info_label_bg = xbmcgui.ControlLabel(x+2, y+2, w, h, '', textColor='0xAA000000', font='font16')
 
-            from settings import Settings
+            from .settings import Settings
             s = Settings()
 
             self.engine = engine.Engine(uri=uri, path=path, data=data, log=_log, host=s.host, port=s.port)
@@ -97,7 +127,7 @@ class Player(xbmc.Player):
             _log(e)
 
     def prebuffer(self):
-        pDialog = xbmcgui.DialogProgress()
+        pDialog = OurDialogProgress()
         pDialog.create("TorrServer", "Wait for info....")
         success = False
         counter = 0
