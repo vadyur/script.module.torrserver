@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # The contents of this file are subject to the BitTorrent Open Source License
 # Version 1.1 (the License).  You may not copy or use this file, in either
 # source code or executable form, except in compliance with the License.  You
@@ -10,9 +11,9 @@
 
 # Written by Petru Paler
 
-
-class BTFailure(Exception):
-    pass
+from builtins import str
+from builtins import object
+from .BTL import BTFailure
 
 
 def decode_int(x, f):
@@ -48,7 +49,7 @@ def decode_dict(x, f):
         r[k], f = decode_func[x[f]](x, f)
     return (r, f + 1)
 
-decode_func  = {}
+decode_func = {}
 decode_func['l'] = decode_list
 decode_func['d'] = decode_dict
 decode_func['i'] = decode_int
@@ -72,8 +73,6 @@ def bdecode(x):
         raise BTFailure("invalid bencoded value (data after valid prefix)")
     return r
 
-from types import StringType, IntType, LongType, DictType, ListType, TupleType
-
 
 class Bencached(object):
 
@@ -93,7 +92,7 @@ def encode_bool(x, r):
         encode_int(1, r)
     else:
         encode_int(0, r)
-
+        
 def encode_string(x, r):
     r.extend((str(len(x)), ':', x))
 
@@ -105,7 +104,7 @@ def encode_list(x, r):
 
 def encode_dict(x,r):
     r.append('d')
-    ilist = x.items()
+    ilist = list(x.items())
     ilist.sort()
     for k, v in ilist:
         r.extend((str(len(k)), ':', k))
@@ -114,12 +113,12 @@ def encode_dict(x,r):
 
 encode_func = {}
 encode_func[Bencached] = encode_bencached
-encode_func[IntType] = encode_int
-encode_func[LongType] = encode_int
-encode_func[StringType] = encode_string
-encode_func[ListType] = encode_list
-encode_func[TupleType] = encode_list
-encode_func[DictType] = encode_dict
+encode_func[int] = encode_int
+encode_func[int] = encode_int
+encode_func[str] = encode_string
+encode_func[list] = encode_list
+encode_func[tuple] = encode_list
+encode_func[dict] = encode_dict
 
 try:
     from types import BooleanType
@@ -131,5 +130,3 @@ def bencode(x):
     r = []
     encode_func[type(x)](x, r)
     return ''.join(r)
-
-
