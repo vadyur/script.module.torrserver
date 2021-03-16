@@ -366,8 +366,10 @@ class Engine(BaseEngine):
                 return f['path']
 
         def _name(name):
+            import sys
             try:
-                return name.decode('utf-8')
+                if sys.version_info < (3, 0) and isinstance(name, str):
+                    return name.decode('utf-8')
             except UnicodeDecodeError:
                 import chardet
                 enc = chardet.detect(name)
