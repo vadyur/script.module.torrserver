@@ -66,7 +66,6 @@ def _log(s):
 class Player(xbmc.Player):
 
     def __init__(self, uri=None, path=None, data=None, index=None, sort_index=None, name=None):
-        #import vsdbg; vsdbg._bp()
 
         try:
             xbmc.Player.__init__(self)

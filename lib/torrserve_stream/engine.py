@@ -303,8 +303,6 @@ class Engine(BaseEngine):
         self._playable_items = []
         self.data = None
         
-        # import vsdbg; vsdbg._bp()		
-
         self.version = self.echo()
         if not self.version:
             self.success = False
