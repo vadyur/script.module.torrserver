@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from sys import version_info
-import requests
+import requests     # type: ignore
 import json
 import time
 
@@ -369,7 +369,7 @@ class Engine(BaseEngine):
                 if sys.version_info < (3, 0) and isinstance(name, str):
                     return name.decode('utf-8')
             except UnicodeDecodeError:
-                import chardet
+                import chardet      # type: ignore
                 enc = chardet.detect(name)
                 if enc['confidence'] > 0.5:
                     try:
@@ -720,6 +720,11 @@ class Engine(BaseEngine):
             if country: video_info['studio'] = country.strip(' ,')
         if 'runtime' in info:
             video_info['duration'] = info.get('runtime', 0) / 1000
+        if 'imdb_id' in info:
+            video_info['imdbnumber'] = info.get('imdb_id')
+        if "media_type" in info:
+            video_info['mediatype'] = info.get('media_type', '')
+
         return video_info
 
     def get_video_info(self):
