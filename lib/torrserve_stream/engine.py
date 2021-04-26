@@ -6,9 +6,10 @@ import json
 import time
 
 if version_info >= (3, 0):
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, unquote
 else:
     from urlparse import urlparse   # type: ignore
+    from urllib import unquote
 class V2toV1Adapter(object):
 
     key_equivalents = {
@@ -75,6 +76,13 @@ class V2toV1Adapter(object):
             else:
                 raise KeyError
 
+        if key in ['Files', 'file_stats', 'FileStats']:
+            try:
+                files = [ V2toV1FilesAdapter(item) for item in self.v2['file_stats'] ]
+                return files
+            except KeyError:
+                pass
+
         ke = self.key_equivalents
         if key in ke:
             try:
@@ -94,6 +102,12 @@ class V2toV1ListAdapter(V2toV1Adapter):
         'Files': 'file_stats',
         'FileStats': 'file_stats',
         #'Name': 'title',
+    }
+
+class V2toV1FilesAdapter(V2toV1Adapter):
+    key_equivalents = {
+        'Name': 'path',
+        'Size': 'length',
     }
 
 def _u(s):
@@ -557,10 +571,9 @@ class Engine(BaseEngine):
             id += 1
 
     def get_ts_index(self, name):
-        ts = self.torrent_stat()
         index = 0
-        for f in ts['Files']:
-            if f['Name'] == name:
+        for f in self.files():
+            if f['path'] == name:
                 return index
             index += 0
 
@@ -657,6 +670,22 @@ class Engine(BaseEngine):
             m = re.search(prefix + r'(\w{40})', url) 
             if m:
                 return m.group(1)
+
+    @staticmethod
+    def extract_filename_from_play_url(url):
+        import re
+
+        v1_pattern = r'/torrent/view/\w{40}/(.+)$'
+        v2_pattern = r'/stream/(.+)\?'
+
+        m = re.search(v2_pattern, url)
+        if m:
+            return unquote(m.group(1))
+
+        m = re.search(v1_pattern, url)
+        if m:
+            return unquote(m.group(1))
+
 
     def get_art(self):
         """ returns art """
