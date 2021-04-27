@@ -753,6 +753,8 @@ class Engine(BaseEngine):
             video_info['imdbnumber'] = info.get('imdb_id')
         if "media_type" in info:
             video_info['mediatype'] = info.get('media_type', '')
+        if "seasons" in info and not video_info.get('mediatype'):
+            video_info['mediatype'] = 'tvshow'
 
         return video_info
 
