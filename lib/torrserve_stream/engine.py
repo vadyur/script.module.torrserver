@@ -706,26 +706,22 @@ class Engine(BaseEngine):
 
     def _get_video_info_v1(self):
         ts = self.torrent_stat()
-        info = ts.get('Info')
-        if info:
-            info = json.loads(info)
-            if info:
-                return self._get_video_info_from_data(info)
-        return {}
+        data = ts.get('Info')
+        info = self._get_video_info_from_data(data)
+        return info if info else {}
 
     def _get_video_info_v2(self):
-        info = None
         ts = self.stat()
         data = ts.get('data', {})
-        if data:
-            info = json.loads(data)
-        if info:
-            return self._get_video_info_from_data(info)
-        else:
-            return {'title': self.title}
+        info = self._get_video_info_from_data(data)
+        return info if info else {'title': self.title}
 
-    def _get_video_info_from_data(self, info):
-        video_info = {}
+    def _get_video_info_from_data(self, data):
+        info = json.loads(data) if data else None
+        if not info:
+            return {}
+
+        video_info = {'data': data}
         if 'title' in info:
             video_info = {'title': info['title']}
         if 'overview' in info:
