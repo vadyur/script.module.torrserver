@@ -131,6 +131,7 @@ def encode_url(s):
         return urllib.quote(s.encode('utf8'))
 
 class BaseEngine(object):
+    cache = []
 
     def make_url(self, path):
         return 'http://' + self.host + ':' + str(self.port) + path
@@ -147,8 +148,8 @@ class BaseEngine(object):
         if self.is_v2 and name == 'upload':
             url = self.make_url('/torrent/upload')
             data = {'save': True}
-            r = requests.post(url, data=data, files=files)
-            return r
+            result = requests.post(url, data=data, files=files)
+            return result
 
         url = self.make_url('/torrents' if self.is_v2 else '/torrent/' + name)
 
@@ -162,18 +163,31 @@ class BaseEngine(object):
         if data:
             data = json.dumps(data)
 
-        if method=='POST':
-            r = requests.post(url, data=data, files=files)
-        else:
-            r = requests.get(url, data=data, files=files)
+        import time
+        now = time.time()
 
-        if r.ok:
+        timeout = 0.5
+        for item in BaseEngine.cache[:]:
+            (_method, _url, _data, _files, _now, _result) = item
+            if _method == method and _url == url and _data == data and _files == files:
+                if now - _now < timeout:
+                    return _result
+                else:
+                    BaseEngine.cache.remove(item)
+
+        if method=='POST':
+            result = requests.post(url, data=data, files=files)
+        else:
+            result = requests.get(url, data=data, files=files)
+
+        if result.ok:
+            BaseEngine.cache.append((method, url, data, files, now, result))
             pass
         else:
             self.log('!!! Wrong request !!!')
-            self.log('Error code {}'.format(r.status_code))
+            self.log('Error code {}'.format(result.status_code))
 
-        return r
+        return result
 
     def echo(self):
         url = self.make_url('/echo')
