@@ -143,7 +143,7 @@ class BaseEngine(object):
 
         return self.version >= (1, 2)
 
-    def request(self, name, method='POST', data=None, files=None):
+    def request(self, name, method='POST', data=None, files=None, caching=False):
 
         if self.is_v2 and name == 'upload':
             url = self.make_url('/torrent/upload')
@@ -167,13 +167,14 @@ class BaseEngine(object):
         now = time.time()
 
         timeout = 0.5
-        for item in BaseEngine.cache[:]:
-            (_method, _url, _data, _files, _now, _result) = item
-            if _method == method and _url == url and _data == data and _files == files:
-                if now - _now < timeout:
-                    return _result
-                else:
-                    BaseEngine.cache.remove(item)
+        if caching:
+            for item in BaseEngine.cache[:]:
+                (_method, _url, _data, _files, _now, _result) = item
+                if _method == method and _url == url and _data == data and _files == files:
+                    if now - _now < timeout:
+                        return _result
+                    else:
+                        BaseEngine.cache.remove(item)
 
         if method=='POST':
             result = requests.post(url, data=data, files=files)
@@ -181,7 +182,8 @@ class BaseEngine(object):
             result = requests.get(url, data=data, files=files)
 
         if result.ok:
-            BaseEngine.cache.append((method, url, data, files, now, result))
+            if caching:
+                BaseEngine.cache.append((method, url, data, files, now, result))
             pass
         else:
             self.log('!!! Wrong request !!!')
@@ -219,21 +221,21 @@ class BaseEngine(object):
 
     def stat(self):
         if self.is_v2:
-            return V2toV1Adapter(self.request('get', data={'Hash': self.hash}).json())
+            return V2toV1Adapter(self.request('get', data={'Hash': self.hash}, caching=True).json())
         else:
-            return self.request('stat', data={'Hash': self.hash}).json()
+            return self.request('stat', data={'Hash': self.hash}, caching=True).json()
 
     def get(self):
         if self.is_v2:
-            return V2toV1Adapter(self.request('get', data={'Hash': self.hash}).json())
+            return V2toV1Adapter(self.request('get', data={'Hash': self.hash}, caching=True).json())
         else:
-            return self.request('get', data={'Hash': self.hash}).json()
+            return self.request('get', data={'Hash': self.hash}, caching=True).json()
         
     def list(self):
         if self.is_v2:
-            return [V2toV1ListAdapter(item) for item in self.request('list').json()]
+            return [V2toV1ListAdapter(item) for item in self.request('list', caching=True).json()]
         else:
-            return self.request('list').json()
+            return self.request('list', caching=True).json()
 
     def restart(self):
         self.request('restart', method='GET')
