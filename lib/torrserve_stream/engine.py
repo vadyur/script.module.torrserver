@@ -6,10 +6,10 @@ import json
 import time
 
 if version_info >= (3, 0):
-    from urllib.parse import urlparse, unquote
+    from urllib.parse import urlparse, unquote_plus
 else:
     from urlparse import urlparse   # type: ignore
-    from urllib import unquote
+    from urllib import unquote_plus
 class V2toV1Adapter(object):
 
     key_equivalents = {
@@ -700,11 +700,11 @@ class Engine(BaseEngine):
 
         m = re.search(v2_pattern, url)
         if m:
-            return unquote(m.group(1))
+            return unquote_plus(m.group(1))
 
         m = re.search(v1_pattern, url)
         if m:
-            return unquote(m.group(1))
+            return unquote_plus(m.group(1))
 
 
     def get_art(self):
