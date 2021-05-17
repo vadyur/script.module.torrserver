@@ -587,11 +587,15 @@ class Engine(BaseEngine):
             id += 1
 
     def get_ts_index(self, name):
-        index = 0
+        def name_in_path(name, path):
+            if '/' in name and '/' in path:
+                return name == path
+            else:
+                return name.split('/')[-1] == path.split('/')[-1]
+
         for f in self.files():
-            if f['path'] == name:
-                return index
-            index += 0
+            if name_in_path(name, f['path']):
+                return f['file_id']
 
     def play_url(self, index):
         fs = self.file_stat(index)
