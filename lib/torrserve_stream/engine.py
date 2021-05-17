@@ -6,10 +6,10 @@ import json
 import time
 
 if version_info >= (3, 0):
-    from urllib.parse import urlparse, unquote
+    from urllib.parse import urlparse, unquote_plus
 else:
     from urlparse import urlparse   # type: ignore
-    from urllib import unquote
+    from urllib import unquote_plus
 class V2toV1Adapter(object):
 
     key_equivalents = {
@@ -587,11 +587,15 @@ class Engine(BaseEngine):
             id += 1
 
     def get_ts_index(self, name):
-        index = 0
+        def name_in_path(name, path):
+            if '/' in name and '/' in path:
+                return name == path
+            else:
+                return name.split('/')[-1] == path.split('/')[-1]
+
         for f in self.files():
-            if f['path'] == name:
-                return index
-            index += 0
+            if name_in_path(name, f['path']):
+                return f['file_id']
 
     def play_url(self, index):
         fs = self.file_stat(index)
@@ -696,11 +700,11 @@ class Engine(BaseEngine):
 
         m = re.search(v2_pattern, url)
         if m:
-            return unquote(m.group(1))
+            return unquote_plus(m.group(1))
 
         m = re.search(v1_pattern, url)
         if m:
-            return unquote(m.group(1))
+            return unquote_plus(m.group(1))
 
 
     def get_art(self):
