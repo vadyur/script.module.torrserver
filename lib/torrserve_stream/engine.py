@@ -381,6 +381,8 @@ class Engine(BaseEngine):
                 return name.encode('ascii', 'ignore')
         else:
             from .bencode import bdecode
+            def _(name):
+                return name
 
         decoded = bdecode(self.data)
 
