@@ -375,28 +375,35 @@ class Engine(BaseEngine):
                 self._playable_items.append({'index': i['Id'], 'name': i['Path'], 'size': i['Length']})
             return self._playable_items
 
-        import os
-        from bencode import bdecode
+        if version_info >= (3, 0):
+            from .bencodepy import bdecode
+            def _(name):
+                return name.encode('ascii', 'ignore')
+        else:
+            from .bencode import bdecode
+
         decoded = bdecode(self.data)
 
-        info = decoded['info']
+        info = decoded[_('info')]
 
         def info_name():
-            if 'name.utf-8' in info:
-                return info['name.utf-8']
+            if _('name.utf-8') in info:
+                return info[_('name.utf-8')]
             else:
-                return info['name']
+                return info[_('name')]
 
         def f_path(f):
-            if 'path.utf-8' in f:
-                return f['path.utf-8']
+            if _('path.utf-8') in f:
+                return f[_('path.utf-8')]
             else:
-                return f['path']
+                return f[_('path')]
 
         def _name(name):
             import sys
             try:
                 if sys.version_info < (3, 0) and isinstance(name, str):
+                    return name.decode('utf-8')
+                if sys.version_info >= (3, 0) and isinstance(name, bytes):
                     return name.decode('utf-8')
             except UnicodeDecodeError:
                 import chardet      # type: ignore
@@ -410,17 +417,19 @@ class Engine(BaseEngine):
 
         info_name = _name(info_name())
         try:
-            if 'files' in info:
-                for i, f in enumerate(info['files']):
+            if _('files') in info:
+                for i, f in enumerate(info[_('files')]):
                     name = _name('/'.join(f_path(f)))
                     name = u'/'.join([info_name, name])
                     size = f['length']
 
                     self._playable_items.append({'index': i, 'name': name, 'size': size})
             else:
-                self._playable_items = [ {'index': 0, 'name': info_name, 'size': info['length'] } ]
+                self._playable_items = [ {'index': 0, 'name': info_name, 'size': info[_('length')] } ]
         except UnicodeDecodeError:
             return None
+        except BaseException as e:
+            pass
 
         return self._playable_items
 
