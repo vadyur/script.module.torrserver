@@ -582,14 +582,16 @@ class Engine(BaseEngine):
         else:
             return self._torrent_stat_v1()
 
-    def file_stat(self, index):
-        ts = self.torrent_stat()
-        return ts['Files'][index]
+    def file_stat(self, index, torrent_stat=None):
+        if not torrent_stat:
+            torrent_stat = self.torrent_stat()
+        return torrent_stat['Files'][index]
 
-    def files(self):
-        ts = self.torrent_stat()
+    def files(self, torrent_stat=None):
+        if not torrent_stat:
+            torrent_stat = self.torrent_stat()
         id = 0
-        for f in ts['Files']:
+        for f in torrent_stat['Files']:
             yield { 'file_id': id, 
                     'path': f['path'] if self.is_v2 else f['Name'],
                     'size': f['length'] if self.is_v2 else f['Size'],
@@ -608,8 +610,8 @@ class Engine(BaseEngine):
             if name_in_path(name, f['path']):
                 return f['file_id']
 
-    def play_url(self, index):
-        fs = self.file_stat(index)
+    def play_url(self, index, torrent_stat=None):
+        fs = self.file_stat(index, torrent_stat)
 
         if self.is_v2:
             r = requests.get(self.make_url("/stream/?link={}&m3u".format(self.hash)))
