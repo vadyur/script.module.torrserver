@@ -307,6 +307,8 @@ class BaseEngine(object):
 
 
 class Engine(BaseEngine):
+    m3u_cache = {}
+
     def _wait_for_data(self, timeout=10):
         self.log('_wait_for_data')
         #files = self.list()
@@ -614,9 +616,18 @@ class Engine(BaseEngine):
         fs = self.file_stat(index, torrent_stat)
 
         if self.is_v2:
-            r = requests.get(self.make_url("/stream/?link={}&m3u".format(self.hash)))
-            if r.status_code == requests.codes.ok:
-                for line in r.text.splitlines():
+            cache = Engine.m3u_cache
+            hash = self.hash
+            if hash in cache:
+                m3u = cache[hash]
+            else:
+                r = requests.get(self.make_url("/stream/?link={}&m3u".format(hash)))
+                if r.status_code == requests.codes.ok:
+                    m3u = r.text
+                    cache[hash] = m3u                   
+
+            if hash in cache:
+                for line in m3u.splitlines():
                     if line.startswith('http://'):
                         find_str = "&index={}&".format( fs['id'] )
                         if find_str in line:
@@ -624,7 +635,7 @@ class Engine(BaseEngine):
             else:
                 quoted_path = encode_url(fs['path'])
                 return self.make_url("/stream/{}?link={}&index={}&play".format(
-                                                quoted_path, self.hash, index+1))
+                                                quoted_path, hash, index+1))
 
         return self.make_url(fs['Link'])
 
