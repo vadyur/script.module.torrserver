@@ -148,7 +148,7 @@ class BaseEngine(object):
         if self.is_v2 and name == 'upload':
             url = self.make_url('/torrent/upload')
             data = {'save': True}
-            result = requests.post(url, data=data, files=files)
+            result = requests.post(url, data=data, files=files, auth=self.auth)
             return result
 
         url = self.make_url('/torrents' if self.is_v2 else '/torrent/' + name)
@@ -177,9 +177,9 @@ class BaseEngine(object):
                         BaseEngine.cache.remove(item)
 
         if method=='POST':
-            result = requests.post(url, data=data, files=files)
+            result = requests.post(url, data=data, files=files, auth=self.auth)
         else:
-            result = requests.get(url, data=data, files=files)
+            result = requests.get(url, data=data, files=files, auth=self.auth)
 
         if result.ok:
             if caching:
@@ -194,7 +194,7 @@ class BaseEngine(object):
     def echo(self):
         url = self.make_url('/echo')
         try:
-            r = requests.get(url)
+            r = requests.get(url, auth=self.auth)
         except requests.ConnectionError as e:
             self.log(_u(e))
             return False
@@ -325,7 +325,17 @@ class Engine(BaseEngine):
                 self.log('"TorrentStatusString" not in stat')
                 time.sleep(0.5)
 
-    def __init__(self, uri=None, path=None, data=None, host='127.0.0.1', port=8090, log=no_log, hash=None, title=None, poster=None):
+    def __init__(self, 
+                uri=None, 
+                path=None, 
+                data=None, 
+                host='127.0.0.1', 
+                port=8090, 
+                log=no_log, 
+                hash=None, 
+                title=None, 
+                poster=None,
+                auth=None):
         self.uri = uri
         self.host = host
         self.port = port
@@ -334,6 +344,7 @@ class Engine(BaseEngine):
         self.success = True
         self._playable_items = []
         self.data = None
+        self.auth = auth
         
         self.version = self.echo()
         if not self.version:
@@ -498,7 +509,7 @@ class Engine(BaseEngine):
         if uri.startswith('magnet:'):
             pass  # self.data = self._magnet2data(uri)
         else:
-            r = requests.get(uri)
+            r = requests.get(uri, auth=self.auth)
             if r.status_code == requests.codes.ok:
                 self.data = r.content
 
@@ -506,7 +517,7 @@ class Engine(BaseEngine):
 
     def start_preload(self, url):
         def download_stream():
-            req = requests.get(url, stream=True, allow_redirects=False)
+            req = requests.get(url, stream=True, allow_redirects=False, auth=self.auth)
             for chunk in req.iter_content(chunk_size=128):
                 self.log('dowload chunk: 128')
 
@@ -621,7 +632,7 @@ class Engine(BaseEngine):
             if hash in cache:
                 m3u = cache[hash]
             else:
-                r = requests.get(self.make_url("/stream/?link={}&m3u".format(hash)))
+                r = requests.get(self.make_url("/stream/?link={}&m3u".format(hash)), auth=self.auth)
                 if r.status_code == requests.codes.ok:
                     m3u = r.text
                     cache[hash] = m3u                   
