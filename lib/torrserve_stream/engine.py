@@ -659,6 +659,15 @@ class Engine(BaseEngine):
 
         self.log(_u(st))
 
+        stat_id = st.get('TorrentStatus')
+
+        # Fix zero preload size
+        if self.is_v2:
+            if stat_id > 2:
+                return 100
+            elif stat_id < 2:
+                return 0
+
         preloadedBytes = st.get('PreloadedBytes', 0)
         preloadSize = st.get('PreloadSize', 0)
         if preloadSize > 0 and preloadedBytes > 0:
@@ -666,7 +675,6 @@ class Engine(BaseEngine):
             if prc >= 100:
                 prc = 100
 
-            stat_id = st.get('TorrentStatus')
             if prc > 0 and stat_id != 2: # 2 - 'Torrent preload'
                 prc = 100
             return prc

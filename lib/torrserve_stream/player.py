@@ -141,11 +141,15 @@ class Player(xbmc.Player):
 
             time.sleep(0.5)
             st = self.engine.stat()
-            #_log(st)
 
             if 'message' in st:
                 counter += 1
                 continue
+
+            stat_id = st.get('TorrentStatus')
+            if stat_id > 2 and engine.is_v2:
+                pDialog.close()
+                return True
 
             downSpeed = humanizeSize(st.get('DownloadSpeed', 0))
             preloadedBytes = st.get('PreloadedBytes', 0)
@@ -169,7 +173,6 @@ class Player(xbmc.Player):
                 stat_s = st.get('TorrentStatusString')
                 _log(stat_s)
 
-                stat_id = st.get('TorrentStatus')
                 if  (preloadedBytes >= preloadSize) or \
                     (prc > 0 and stat_id != 2): # 2 - 'Torrent preload'
                     success = True
