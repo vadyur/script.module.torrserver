@@ -777,14 +777,14 @@ class Engine(BaseEngine):
         ts = self.stat()
         data = ts.get('data', {})
         info = self._get_video_info_from_data(data)
-        return info if info else {'title': self.title}
+        return info if info else {} # {'title': self.title}
 
     def _get_video_info_from_data(self, data):
         info = json.loads(data) if data else None
         if not info:
             return {}
 
-        video_info = {'data': data}
+        video_info = {} # {'data': data}
         if 'title' in info:
             video_info = {'title': info['title']}
         if 'overview' in info:
