@@ -305,6 +305,13 @@ class BaseEngine(object):
 
         return r.status_code == requests.codes.ok
 
+    def search(self, s):
+        ver = self.version
+        if ver and ver >= (2, 0, 120):
+            url = self.make_url('/search')
+            res = requests.get(url, params={'query': s}, auth=self.auth)
+            return res.json()
+        return []
 
 class Engine(BaseEngine):
     m3u_cache = {}
