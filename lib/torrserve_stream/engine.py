@@ -6,10 +6,11 @@ import json
 import time
 
 if version_info >= (3, 0):
-    from urllib.parse import urlparse, unquote_plus
+    from urllib.parse import urlparse, unquote_plus, quote
+    from urllib.request import url2pathname
 else:
     from urlparse import urlparse   # type: ignore
-    from urllib import unquote_plus
+    from urllib import unquote_plus, url2pathname, quote # type: ignore
 class V2toV1Adapter(object):
 
     key_equivalents = {
@@ -71,7 +72,7 @@ class V2toV1Adapter(object):
 
         def get_value(v2key):
             if v2key in self.v2:
-                value = self.v2[v2key] 
+                value = self.v2[v2key]
                 return get_element(value)
             else:
                 raise KeyError
@@ -120,15 +121,10 @@ def no_log(s):
 
 def url2path(url):
     import urllib
-    return urllib.url2pathname(urlparse(url).path)
+    return url2pathname(urlparse(url).path)
 
 def encode_url(s):
-    import urllib
-
-    if version_info >= (3, 0):
-        return urllib.parse.quote(s.encode('utf8'))
-    else:
-        return urllib.quote(s.encode('utf8'))
+    return quote(s.encode('utf8'))
 
 class BaseEngine(object):
     cache = []
@@ -230,7 +226,7 @@ class BaseEngine(object):
             return V2toV1Adapter(self.request('get', data={'Hash': self.hash}, caching=True).json())
         else:
             return self.request('get', data={'Hash': self.hash}, caching=True).json()
-        
+
     def list(self):
         if self.is_v2:
             return [V2toV1ListAdapter(item) for item in self.request('list', caching=True).json()]
@@ -332,15 +328,15 @@ class Engine(BaseEngine):
                 self.log('"TorrentStatusString" not in stat')
                 time.sleep(0.5)
 
-    def __init__(self, 
-                uri=None, 
-                path=None, 
-                data=None, 
-                host='127.0.0.1', 
-                port=8090, 
-                log=no_log, 
-                hash=None, 
-                title=None, 
+    def __init__(self,
+                uri=None,
+                path=None,
+                data=None,
+                host='127.0.0.1',
+                port=8090,
+                log=no_log,
+                hash=None,
+                title=None,
                 poster=None,
                 auth=None):
         self.uri = uri
@@ -352,7 +348,7 @@ class Engine(BaseEngine):
         self._playable_items = []
         self.data = None
         self.auth = auth
-        
+
         self.version = self.echo()
         if not self.version:
             self.success = False
@@ -462,16 +458,16 @@ class Engine(BaseEngine):
         '''
         try:
             from python_libtorrent import get_libtorrent
-            lt = get_libtorrent()			
-            
+            lt = get_libtorrent()
+
         except ImportError:
             self.log('_magnet2data: import error')
             return None
-            
+
         except:
             self.log('_magnet2data: other error')
             return None
-            
+
 
         import tempfile, sys, shutil
         from time import sleep
@@ -612,7 +608,7 @@ class Engine(BaseEngine):
             torrent_stat = self.torrent_stat()
         id = 0
         for f in torrent_stat['Files']:
-            yield { 'file_id': id, 
+            yield { 'file_id': id,
                     'path': f['path'] if self.is_v2 else f['Name'],
                     'size': f['length'] if self.is_v2 else f['Size'],
                     #'viewed': f['viewed'] if self.is_v2 else f['Viewed']
@@ -642,7 +638,7 @@ class Engine(BaseEngine):
                 r = requests.get(self.make_url("/stream/?link={}&m3u".format(hash)), auth=self.auth)
                 if r.status_code == requests.codes.ok:
                     m3u = r.text
-                    cache[hash] = m3u                   
+                    cache[hash] = m3u
 
             if hash in cache:
                 for line in m3u.splitlines():
@@ -737,7 +733,7 @@ class Engine(BaseEngine):
 
         import re
         for prefix in prefixes:
-            m = re.search(prefix + r'(\w{40})', url) 
+            m = re.search(prefix + r'(\w{40})', url)
             if m:
                 return m.group(1)
 
@@ -802,7 +798,7 @@ class Engine(BaseEngine):
             genres = []
             for g in info['genres']:
                 genres.append(g['name'])
-            if genres: 
+            if genres:
                 video_info['genre'] = genres
         if 'original_title' in info:
             video_info['originaltitle'] = info.get('original_title')
