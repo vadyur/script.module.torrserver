@@ -1,9 +1,10 @@
-# coding: utf-8
-
-from sys import version_info
-import requests     # type: ignore
+import requests
 import json
 import time
+from typing import Dict, List, Any, Optional, Iterable, TypedDict
+
+from .V2 import V2toV1Adapter, V2toV1ListAdapter, V2toV1FilesAdapter
+from sys import version_info
 
 if version_info >= (3, 0):
     from urllib.parse import urlparse, unquote_plus, quote
@@ -11,105 +12,16 @@ if version_info >= (3, 0):
 else:
     from urlparse import urlparse   # type: ignore
     from urllib import unquote_plus, url2pathname, quote # type: ignore
-class V2toV1Adapter(object):
 
-    key_equivalents = {
-        'TorrentStatusString': 'stat_string',
-        'TorrentStatus': 'stat',
-        'Length': 'torrent_size',
-        'Files': 'file_stats',
-        'FileStats': 'file_stats',
-    }
+class PlayableItem(TypedDict):
+    index: int
+    name: str
+    size: int
 
-    deprecated = {
-        'UploadSpeed':  0,
-    }
-
-    def __init__(self, v2):
-        self.v2 = v2
-
-    def __str__(self):
-        return self.v2.__str__()
-
-    def get(self, key, def_val=None):
-        try:
-            return self.__getitem__(key)
-        except KeyError:
-            return def_val
-
-    def _get_v2_key(self, key):
-        v2key = key[0].lower()
-        for ch in key[1:]:
-            if ch.isupper():
-                v2key += '_' + ch.lower()
-            else:
-                v2key += ch
-        return v2key
-
-    def __contains__(self, item):
-        if item in self.v2:
-            return True
-
-        ke = self.key_equivalents
-        if item in ke and ke[item] in self.v2:
-            return True
-
-        return self._get_v2_key(item) in self.v2
-
-    def __getitem__(self, key):
-        if key in self.v2:
-            return self.v2[key]
-
-        if key in self.deprecated:
-            return self.deprecated[key]
-
-        def get_element(value):
-            if isinstance(value, dict):
-                return self.__class__(value)
-            elif isinstance(value, list):
-                return [ get_element(item) for item in value ]
-            return value
-
-        def get_value(v2key):
-            if v2key in self.v2:
-                value = self.v2[v2key]
-                return get_element(value)
-            else:
-                raise KeyError
-
-        if key in ['Files', 'file_stats', 'FileStats']:
-            try:
-                files = [ V2toV1FilesAdapter(item) for item in self.v2['file_stats'] ]
-                return files
-            except KeyError:
-                pass
-
-        ke = self.key_equivalents
-        if key in ke:
-            try:
-                return get_value(ke[key])
-            except KeyError:
-                pass
-
-        v2key = self._get_v2_key(key)
-
-        return get_value(v2key)
-
-class V2toV1ListAdapter(V2toV1Adapter):
-    key_equivalents = {
-        #'TorrentStatusString': 'stat_string',
-        #'TorrentStatus': 'stat',
-        'Length': 'torrent_size',
-        'Files': 'file_stats',
-        'FileStats': 'file_stats',
-        #'Name': 'title',
-    }
-
-class V2toV1FilesAdapter(V2toV1Adapter):
-    key_equivalents = {
-        'Name': 'path',
-        'Size': 'length',
-    }
+class FileItem(TypedDict):
+    file_id: int
+    path: str
+    size: int
 
 def _u(s):
     if version_info >= (3, 0):
@@ -129,7 +41,7 @@ def encode_url(s):
 class BaseEngine(object):
     cache = []
 
-    def make_url(self, path):
+    def make_url(self, path) -> str:
         return 'http://' + self.host + ':' + str(self.port) + path
 
     @property
@@ -215,7 +127,7 @@ class BaseEngine(object):
 
         return False
 
-    def stat(self):
+    def stat(self) -> Dict[str, Any]:
         if self.is_v2:
             return V2toV1Adapter(self.request('get', data={'Hash': self.hash}, caching=True).json())
         else:
@@ -227,7 +139,7 @@ class BaseEngine(object):
         else:
             return self.request('get', data={'Hash': self.hash}, caching=True).json()
 
-    def list(self):
+    def list(self) -> List[Dict[str, Any]]:
         if self.is_v2:
             return [V2toV1ListAdapter(item) for item in self.request('list', caching=True).json()]
         else:
@@ -349,7 +261,8 @@ class Engine(BaseEngine):
         self.data = None
         self.auth = auth
 
-        self.version = self.echo()
+        echo = self.echo()
+        self.version = echo if echo else ()
         if not self.version:
             self.success = False
             return
@@ -373,10 +286,10 @@ class Engine(BaseEngine):
             self._wait_for_data()
 
     @property
-    def playable_items(self):
+    def playable_items(self) -> List[PlayableItem]:
         return self._get_playable_items()
 
-    def _get_playable_items(self):
+    def _get_playable_items(self) -> List[PlayableItem]:
 
         if self._playable_items:
             return self._playable_items
@@ -454,55 +367,6 @@ class Engine(BaseEngine):
     def _magnet2data(self, magnet):
         self.log('-'*100)
         self.log('_magnet2data')
-
-        '''
-        try:
-            from python_libtorrent import get_libtorrent
-            lt = get_libtorrent()
-
-        except ImportError:
-            self.log('_magnet2data: import error')
-            return None
-
-        except:
-            self.log('_magnet2data: other error')
-            return None
-
-
-        import tempfile, sys, shutil
-        from time import sleep
-
-        tempdir = tempfile.mkdtemp()
-        ses = lt.session()
-        params = {
-            'save_path': tempdir,
-            'storage_mode': lt.storage_mode_t(2),
-            'paused': False,
-            'auto_managed': True,
-            'duplicate_is_error': True
-        }
-        handle = lt.add_magnet_uri(ses, magnet, params)
-
-        self.log("Downloading Metadata (this may take a while)")
-        while (not handle.has_metadata()):
-            try:
-                sleep(1)
-                self.log('Wait for data')
-            except KeyboardInterrupt:
-                self.log("Aborting...")
-                ses.pause()
-                self.log("Cleanup dir " + tempdir)
-                shutil.rmtree(tempdir)
-                return None
-        ses.pause()
-        self.log("Done")
-
-        torinfo = handle.get_torrent_info()
-        torfile = lt.create_torrent(torinfo)
-
-        torcontent = lt.bencode(torfile.generate())
-        return torcontent
-        '''
 
     def upload(self, name, data):
         self.data = data
@@ -603,7 +467,7 @@ class Engine(BaseEngine):
             torrent_stat = self.torrent_stat()
         return torrent_stat['Files'][index]
 
-    def files(self, torrent_stat=None):
+    def files(self, torrent_stat=None) -> Iterable[FileItem]:
         if not torrent_stat:
             torrent_stat = self.torrent_stat()
         id = 0
@@ -615,7 +479,7 @@ class Engine(BaseEngine):
             }
             id += 1
 
-    def get_ts_index(self, name):
+    def get_ts_index(self, name) -> Optional[int]:
         def name_in_path(name, path):
             if '/' in name and '/' in path:
                 return name == path
@@ -626,7 +490,7 @@ class Engine(BaseEngine):
             if name_in_path(name, f['path']):
                 return f['file_id']
 
-    def play_url(self, index, torrent_stat=None):
+    def play_url(self, index, torrent_stat=None) -> str:
         fs = self.file_stat(index, torrent_stat)
 
         if self.is_v2:
@@ -685,7 +549,7 @@ class Engine(BaseEngine):
         return 0
 
     @property
-    def title(self):
+    def title(self) -> Optional[str]:
         if self.is_v2:
             return self.stat().get('title')
         else:
@@ -697,7 +561,7 @@ class Engine(BaseEngine):
                     return info.get('title')
 
     @property
-    def poster(self):
+    def poster(self) -> Optional[str]:
         if self.is_v2:
             return self.stat().get('poster')
         else:
@@ -728,7 +592,7 @@ class Engine(BaseEngine):
         return result
 
     @staticmethod
-    def extract_hash_from_play_url(url):
+    def extract_hash_from_play_url(url: str) -> Optional[str]:
         prefixes = ['torrent/view/', 'link=', 'xt=urn:btih:']
 
         import re
@@ -885,6 +749,3 @@ if __name__ == '__main__':
     for file_id in range(0, 8):
         play_url = e.play_url(file_id)
         log(play_url)
-
-
-

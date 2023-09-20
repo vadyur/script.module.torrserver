@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from __future__ import absolute_import
+from typing import Any
 
 from . import engine
 import xbmc, xbmcgui, xbmcplugin, time, sys
@@ -8,7 +9,7 @@ import xbmc, xbmcgui, xbmcplugin, time, sys
 class OurDialogProgress(xbmcgui.DialogProgress):
     def create(self, heading, line1="", line2="", line3=""):
         try:
-            xbmcgui.DialogProgress.create(self, heading, line1, line2, line3)
+            xbmcgui.DialogProgress.create(self, heading, line1, line2, line3)   #type: ignore
         except TypeError:
             message = line1
             if line2:
@@ -19,7 +20,7 @@ class OurDialogProgress(xbmcgui.DialogProgress):
 
     def update(self, percent, line1="", line2="", line3=""):
         try:
-            xbmcgui.DialogProgress.update(self, int(percent), line1, line2, line3)
+            xbmcgui.DialogProgress.update(self, int(percent), line1, line2, line3)  #type: ignore
         except TypeError:
             message = line1
             if line2:
@@ -146,8 +147,8 @@ class Player(xbmc.Player):
                 counter += 1
                 continue
 
-            stat_id = st.get('TorrentStatus')
-            if stat_id > 2 and engine.is_v2:
+            stat_id: Any = st.get('TorrentStatus', -1)
+            if stat_id > 2 and self.engine.is_v2:
                 pDialog.close()
                 return True
 
@@ -160,8 +161,8 @@ class Player(xbmc.Player):
                 st.get('TotalPeers', 0))
 
             line3 = u"D: {0}/сек [{1}/{2}]".format(
-                downSpeed, 
-                humanizeSize(preloadedBytes), 
+                downSpeed,
+                humanizeSize(preloadedBytes),
                 humanizeSize(preloadSize))
 
             if preloadSize > 0 and preloadedBytes > 0:
@@ -214,23 +215,23 @@ class Player(xbmc.Player):
             except BaseException as e:
                 _log('************************ ERROR ***********************')
                 _log(e)
-                
+
     def loop(self):
         while not xbmc.abortRequested and not self.isPlaying():
             xbmc.sleep(100)
 
         _log('************************ START Playing ***********************')
-            
+
         while not xbmc.abortRequested and self.isPlaying():
             xbmc.sleep(1000)
             self.UpdateProgress()
 
         _log('************************ FINISH Playing ***********************')
-            
+
     def __del__(self):				self._hide_progress()
     def onPlayBackPaused(self):		self._show_progress()
     def onPlayBackResumed(self):	self._hide_progress()
     def onPlayBackEnded(self):		self._hide_progress()
     def onPlayBackStopped(self):	self._hide_progress()
-    
-    
+
+
