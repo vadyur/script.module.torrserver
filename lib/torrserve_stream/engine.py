@@ -1,7 +1,8 @@
 import requests
 import json
 import time
-from typing import Dict, List, Any, Optional, Iterable, TypedDict
+from typing import Dict, List, Any, Optional, Iterable, TypedDict, Mapping, Callable
+from dataclasses import dataclass, field
 
 from .V2 import V2toV1Adapter, V2toV1ListAdapter, V2toV1FilesAdapter
 from sys import version_info
@@ -38,7 +39,13 @@ def url2path(url):
 def encode_url(s):
     return quote(s.encode('utf8'))
 
+@dataclass
 class BaseEngine(object):
+    host: str
+    port: int
+    log: Callable
+    auth: Optional[tuple]
+
     cache = []
 
     def make_url(self, path) -> str:
@@ -47,9 +54,13 @@ class BaseEngine(object):
     @property
     def is_v2(self):
         if 'version' not in self.__dict__:
-            self.version = self.echo()
+            echo = self.echo()
+            self.version = echo if echo else ()
 
-        return self.version >= (1, 2)
+        if self.version:
+            return self.version >= (1, 2)
+
+        raise Exception("Bad connection to torrsever")
 
     def request(self, name, method='POST', data=None, files=None, caching=False):
 
@@ -127,9 +138,9 @@ class BaseEngine(object):
 
         return False
 
-    def stat(self) -> Dict[str, Any]:
+    def stat(self) -> Mapping[str, Any]:
         if self.is_v2:
-            return V2toV1Adapter(self.request('get', data={'Hash': self.hash}, caching=True).json())
+            return V2toV1Adapter(self.request('get', data={'Hash': self.hash}, caching=True).json())    #type: ignore
         else:
             return self.request('stat', data={'Hash': self.hash}, caching=True).json()
 
@@ -139,9 +150,9 @@ class BaseEngine(object):
         else:
             return self.request('get', data={'Hash': self.hash}, caching=True).json()
 
-    def list(self) -> List[Dict[str, Any]]:
+    def list(self) -> List[Mapping[str, Any]]:
         if self.is_v2:
-            return [V2toV1ListAdapter(item) for item in self.request('list', caching=True).json()]
+            return [V2toV1ListAdapter(item) for item in self.request('list', caching=True).json()]  #type: ignore
         else:
             return self.request('list', caching=True).json()
 
@@ -221,7 +232,10 @@ class BaseEngine(object):
             return res.json()
         return []
 
+@dataclass
 class Engine(BaseEngine):
+    _playable_items:List[PlayableItem]
+
     m3u_cache = {}
 
     def _wait_for_data(self, timeout=10):
@@ -251,15 +265,14 @@ class Engine(BaseEngine):
                 title=None,
                 poster=None,
                 auth=None):
+
+        super(Engine, self).__init__(host, port, log, auth)
+
         self.uri = uri
-        self.host = host
-        self.port = port
         self.hash = hash
-        self.log = log
         self.success = True
-        self._playable_items = []
         self.data = None
-        self.auth = auth
+        self._playable_items = []
 
         echo = self.echo()
         self.version = echo if echo else ()
@@ -317,7 +330,7 @@ class Engine(BaseEngine):
 
         info = decoded[_('info')]
 
-        def info_name():
+        def _info_name() -> str:
             if _('name.utf-8') in info:
                 return info[_('name.utf-8')]
             else:
@@ -329,7 +342,7 @@ class Engine(BaseEngine):
             else:
                 return f[_('path')]
 
-        def _name(name):
+        def _name(name) -> str:
             import sys
             try:
                 if sys.version_info < (3, 0) and isinstance(name, str):
@@ -339,26 +352,26 @@ class Engine(BaseEngine):
             except UnicodeDecodeError:
                 import chardet      # type: ignore
                 enc = chardet.detect(name)
-                if enc['confidence'] > 0.5:
+                if enc and enc['confidence'] > 0.5:
                     try:
                         name = name.decode(enc['encoding'])
                     except UnicodeDecodeError:
                         pass
-            return name
+            return name # type: ignore
 
-        info_name = _name(info_name())
+        info_name: str = _name(_info_name())
         try:
             if _('files') in info:
                 for i, f in enumerate(info[_('files')]):
-                    name = _name('/'.join(f_path(f)))
-                    name = u'/'.join([info_name, name])
-                    size = f['length']
+                    name = _name(_('/').join(f_path(f)))
+                    name = u'/'.join([info_name, name]) #type: ignore
+                    size = f[_('length')]
 
                     self._playable_items.append({'index': i, 'name': name, 'size': size})
             else:
                 self._playable_items = [ {'index': 0, 'name': info_name, 'size': info[_('length')] } ]
         except UnicodeDecodeError:
-            return None
+            return []
         except BaseException as e:
             pass
 
@@ -409,14 +422,14 @@ class Engine(BaseEngine):
 
         return file_id
 
-    def _start_v2(self, start_index=None):
+    def _start_v2(self, start_index: int):
         preload_url = self.make_url("/stream?link={}&index={}&preload".format(
             self.hash, start_index+1
         ))
 
         self.start_preload(preload_url)
 
-    def _start_v1(self, start_index=None):
+    def _start_v1(self, start_index: int):
         for n in range(5):
             self.log('Try # {0}'.format(n))
             try:
@@ -456,7 +469,9 @@ class Engine(BaseEngine):
             if self.hash == torr['Hash']:
                 return torr
 
-    def torrent_stat(self):
+        return {}
+
+    def torrent_stat(self) -> Mapping[str, Any]:
         if self.is_v2:
             return self.stat()
         else:
@@ -503,6 +518,7 @@ class Engine(BaseEngine):
                 if r.status_code == requests.codes.ok:
                     m3u = r.text
                     cache[hash] = m3u
+                else: m3u = ''
 
             if hash in cache:
                 for line in m3u.splitlines():
@@ -517,16 +533,17 @@ class Engine(BaseEngine):
 
         return self.make_url(fs['Link'])
 
-    def progress(self):
+    def progress(self) -> int:
         info = self.stat()
         percent = float(info['downloaded']) * 100 / info['size']
+        return percent
 
-    def buffer_progress(self):
+    def buffer_progress(self) -> int:
         st = self.stat()
 
         self.log(_u(st))
 
-        stat_id = st.get('TorrentStatus')
+        stat_id = st.get('TorrentStatus', 0)
 
         # Fix zero preload size
         if self.is_v2:
@@ -535,8 +552,8 @@ class Engine(BaseEngine):
             elif stat_id < 2:
                 return 0
 
-        preloadedBytes = st.get('PreloadedBytes', 0)
-        preloadSize = st.get('PreloadSize', 0)
+        preloadedBytes: int = st.get('PreloadedBytes', 0)
+        preloadSize: int = st.get('PreloadSize', 0)
         if preloadSize > 0 and preloadedBytes > 0:
             prc = preloadedBytes * 100 / preloadSize
             if prc >= 100:
@@ -544,7 +561,7 @@ class Engine(BaseEngine):
 
             if prc > 0 and stat_id != 2: # 2 - 'Torrent preload'
                 prc = 100
-            return prc
+            return int(prc)
 
         return 0
 
@@ -573,7 +590,7 @@ class Engine(BaseEngine):
                     return info.get('poster_path')
 
     @property
-    def fanart(self):
+    def fanart(self) -> Optional[str]:
         if self.is_v2:
             return None # self.stat().get('fanart')
         else:
@@ -585,7 +602,7 @@ class Engine(BaseEngine):
                     return info.get('backdrop_path')
 
     @staticmethod
-    def extract_hash_from_magnet(magnet):
+    def extract_hash_from_magnet(magnet) -> str:
         # 'magnet:?xt=urn:btih:3b68e98ec4522d7a2c3dae1614bb32d3e8a41155&dn=rutor.info&tr=udp%3A%2F%2Fopentor.org%3A2710&tr=udp%3A%2F%2Fopentor.org%3A2710&tr=http%3A%2F%2Fretracker.local%2Fannounce'
         result = magnet.replace('magnet:?xt=urn:btih:', '')
         result = result.split('&')[0]
@@ -602,7 +619,7 @@ class Engine(BaseEngine):
                 return m.group(1)
 
     @staticmethod
-    def extract_filename_from_play_url(url):
+    def extract_filename_from_play_url(url) -> Optional[str]:
         import re
 
         v1_pattern = r'/torrent/view/\w{40}/(.+)$'
@@ -617,7 +634,7 @@ class Engine(BaseEngine):
             return unquote_plus(m.group(1))
 
 
-    def get_art(self):
+    def get_art(self) -> Mapping[str, Any]:
         """ returns art """
         art = {}
 
