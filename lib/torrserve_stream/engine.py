@@ -699,6 +699,20 @@ class Engine(BaseEngine):
         if "seasons" in info and not video_info.get('mediatype'):
             video_info['mediatype'] = 'tvshow'
 
+        created_by = info.get("created_by")
+        if created_by:
+            persons = []
+            for person in created_by:
+                persons.append(person["name"])
+            video_info["director"] = persons
+
+        production_companies = info.get("production_companies")
+        if production_companies:
+            companies = []
+            for company in production_companies:
+                companies.append(company["name"])
+            video_info["studio"] = companies
+
         return video_info
 
     def get_video_info(self):
