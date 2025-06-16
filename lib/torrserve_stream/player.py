@@ -85,7 +85,7 @@ class Player(xbmc.Player):
             from .settings import Settings
             s = Settings()
 
-            self.engine = engine.Engine(uri=uri, path=path, data=data, log=_log, host=s.host, port=s.port, auth=s.auth)
+            self.engine = engine.Engine(uri=uri, path=path, data=data, log=_log, **s.engine_args)
 
             if not self.engine.success:
                 dialog = xbmcgui.Dialog()

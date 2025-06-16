@@ -6,8 +6,8 @@
     <import addon="script.module.vsdbg" optional="true"/>
     </requires>
 
+    <extension point="xbmc.service" library="lib/torrserve_stream/service.py" />
     <extension point="xbmc.python.module" library="lib"/>
-
     <extension point="xbmc.python.pluginsource" library="lib/torrserve_stream/settings.py">
     <provides>executable</provides>
     </extension>

@@ -2,7 +2,7 @@ import requests
 import json
 import time
 from typing import Dict, List, Any, Optional, Iterable, TypedDict, Mapping, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .V2 import V2toV1Adapter, V2toV1ListAdapter, V2toV1FilesAdapter
 from sys import version_info
@@ -45,11 +45,32 @@ class BaseEngine(object):
     port: int
     log: Callable
     auth: Optional[tuple]
+    use_https: bool
 
     cache = []
 
+    @property
+    def scheme(self) -> str:
+        return 'https' if self.use_https else 'http'
+
     def make_url(self, path) -> str:
-        return 'http://' + self.host + ':' + str(self.port) + path
+        return f'{self.scheme}://{self.host}:{self.port}{path}'
+
+    def GET(self, url, params=None, **kwargs):
+        """ Wrapper for request.get. Needs to be used with veryfy=False if you use self.use_https=True """
+        if self.auth:
+            kwargs['auth'] = self.auth
+        if self.use_https:
+            kwargs['verify'] = False
+        return requests.get(url, params=params, **kwargs)
+
+    def POST(self, url, data=None, json=None, **kwargs):
+        """ Wrapper for request.post. Needs to be used with veryfy=False if you use self.use_https=True """
+        if self.auth:
+            kwargs['auth'] = self.auth
+        if self.use_https:
+            kwargs['verify'] = False
+        return requests.post(url, data=data, json=json, **kwargs)
 
     @property
     def is_v2(self):
@@ -67,7 +88,7 @@ class BaseEngine(object):
         if self.is_v2 and name == 'upload':
             url = self.make_url('/torrent/upload')
             data = {'save': True}
-            result = requests.post(url, data=data, files=files, auth=self.auth)
+            result = self.POST(url, data=data, files=files)
             return result
 
         url = self.make_url('/torrents' if self.is_v2 else '/torrent/' + name)
@@ -96,9 +117,9 @@ class BaseEngine(object):
                         BaseEngine.cache.remove(item)
 
         if method=='POST':
-            result = requests.post(url, data=data, files=files, auth=self.auth)
+            result = self.POST(url, data=data, files=files)
         else:
-            result = requests.get(url, data=data, files=files, auth=self.auth)
+            result = self.GET(url, data=data, files=files)
 
         if result.ok:
             if caching:
@@ -113,7 +134,7 @@ class BaseEngine(object):
     def echo(self):
         url = self.make_url('/echo')
         try:
-            r = requests.get(url, auth=self.auth)
+            r = self.GET(url)
         except requests.ConnectionError as e:
             self.log(_u(e))
             return False
@@ -139,10 +160,26 @@ class BaseEngine(object):
         return False
 
     def stat(self) -> Mapping[str, Any]:
+        def request():
+            resp = None
+            if self.is_v2:
+                resp = self.request('get', data={'Hash': self.hash}, caching=True)
+            else:
+                resp = self.request('stat', data={'Hash': self.hash}, caching=True)
+
+            try:
+                result = resp.json()
+                return result
+            except BaseException as e:
+                self.log('Error in stat request')
+                self.log(_u(e))
+                self.log(resp.text)
+                return {}
+
         if self.is_v2:
-            return V2toV1Adapter(self.request('get', data={'Hash': self.hash}, caching=True).json())    #type: ignore
+            return V2toV1Adapter(request())    #type: ignore
         else:
-            return self.request('stat', data={'Hash': self.hash}, caching=True).json()
+            return request()
 
     def get(self):
         if self.is_v2:
@@ -228,7 +265,7 @@ class BaseEngine(object):
         ver = self.version
         if ver and ver >= (2, 0, 120):
             url = self.make_url('/search')
-            res = requests.get(url, params={'query': s}, auth=self.auth)
+            res = self.GET(url, params={'query': s})
             return res.json()
         return []
 
@@ -264,9 +301,10 @@ class Engine(BaseEngine):
                 hash=None,
                 title=None,
                 poster=None,
-                auth=None):
+                auth=None,
+                use_https=False):
 
-        super(Engine, self).__init__(host, port, log, auth)
+        super(Engine, self).__init__(host, port, log, auth, use_https)
 
         self.uri = uri
         self.hash = hash
@@ -389,7 +427,7 @@ class Engine(BaseEngine):
         if uri.startswith('magnet:'):
             pass  # self.data = self._magnet2data(uri)
         else:
-            r = requests.get(uri, auth=self.auth)
+            r = self.GET(uri)
             if r.status_code == requests.codes.ok:
                 self.data = r.content
 
@@ -397,7 +435,7 @@ class Engine(BaseEngine):
 
     def start_preload(self, url):
         def download_stream():
-            req = requests.get(url, stream=True, allow_redirects=False, auth=self.auth)
+            req = self.GET(url, stream=True, allow_redirects=False)
             for chunk in req.iter_content(chunk_size=128):
                 self.log('dowload chunk: 128')
 
@@ -508,13 +546,19 @@ class Engine(BaseEngine):
     def play_url(self, index, torrent_stat=None) -> str:
         fs = self.file_stat(index, torrent_stat)
 
+        def real_url(url):
+            from .restreamer import PORT
+            if self.use_https:
+                return url.replace('https://', f'http://localhost:{PORT}/https/')
+            return url
+
         if self.is_v2:
             cache = Engine.m3u_cache
             hash = self.hash
             if hash in cache:
                 m3u = cache[hash]
             else:
-                r = requests.get(self.make_url("/stream/?link={}&m3u".format(hash)), auth=self.auth)
+                r = self.GET(self.make_url("/stream/?link={}&m3u".format(hash)))
                 if r.status_code == requests.codes.ok:
                     m3u = r.text
                     cache[hash] = m3u
@@ -522,16 +566,16 @@ class Engine(BaseEngine):
 
             if hash in cache:
                 for line in m3u.splitlines():
-                    if line.startswith('http://'):
+                    if line.startswith('http://') or line.startswith('https://'):
                         find_str = "&index={}&".format( fs['id'] )
                         if find_str in line:
-                            return line
+                            return real_url(line)
             else:
                 quoted_path = encode_url(fs['path'])
-                return self.make_url("/stream/{}?link={}&index={}&play".format(
-                                                quoted_path, hash, index+1))
+                return real_url(self.make_url("/stream/{}?link={}&index={}&play".format(
+                                                quoted_path, hash, index+1)))
 
-        return self.make_url(fs['Link'])
+        return real_url(self.make_url(fs['Link']))
 
     def progress(self) -> int:
         info = self.stat()
@@ -721,62 +765,3 @@ class Engine(BaseEngine):
             return self._get_video_info_v2()
         else:
             return self._get_video_info_v1()
-
-
-
-if __name__ == '__main__':
-    path = 'D:\\test.torrent'
-    file_id = 2
-
-    def log(s):
-        with open('engine.log', 'a') as f:
-            try:
-                f.write(s.encode('utf-8'))
-            except:
-                f.write(s)
-            f.write('\n')
-
-    # host='192.168.1.5'
-    #e = Engine(path=path, log=log)
-    #e = Engine(uri='http://rutor.is/download/657889', log=log)
-    #e = Engine(uri='magnet:?xt=urn:btih:a60f1bf7abf47af05ff8bd2b5f33fff65e7d7159&dn=rutor.info_%D0%9C%D0%B0%D0%BD%D0%B8%D1%84%D0%B5%D1%81%D1%82+%2F+%D0%94%D0%B5%D0%BA%D0%BB%D0%B0%D1%80%D0%B0%D1%86%D0%B8%D1%8F+%2F+Manifest+%5B01%D1%8501-11+%D0%B8%D0%B7+18%5D+%282018%29+WEB-DL+720p+%7C+LostFilm&tr=udp://opentor.org:2710&tr=udp://opentor.org:2710&tr=http://retracker.local/announce', log=log)
-
-    e = Engine(path='/Users/vd/.kodi/temp/lazyf1.torrent')
-
-    e.start()
-
-    g = e.get()
-    s = e.stat()
-
-    while 'FileStats' not in s:
-        time.sleep(0.5)
-        s = e.stat()
-
-    while True:
-        try:
-            st = e.stat()
-            downloaded = int(st['LoadedSize'] / 1024 / 1024)
-            print(downloaded)
-            size = int(st['FileStats'][0]['Length'] / 1024 / 1024)
-            print(size)
-            dl_speed = int(st['DownloadSpeed'] / 1024)
-            print(dl_speed)
-            ul_speed = int(st['UploadSpeed'] / 1024)
-            print(ul_speed)
-            num_seeds =	st['ConnectedSeeders']
-            print(num_seeds)
-            num_peers =	st['ActivePeers']
-            print(num_peers)
-
-            if downloaded > size:
-                break
-        except:
-            pass
-
-    fstats = s['FileStats']
-    item = fstats[0]
-    size = int(item['Length'])
-
-    for file_id in range(0, 8):
-        play_url = e.play_url(file_id)
-        log(play_url)
