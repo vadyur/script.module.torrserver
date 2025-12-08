@@ -527,7 +527,7 @@ class Engine(BaseEngine):
         for f in torrent_stat['Files']:
             yield { 'file_id': id,
                     'path': f['path'] if self.is_v2 else f['Name'],
-                    'size': f['length'] if self.is_v2 else f['Size'],
+                    'size': f.get('length', 0) if self.is_v2 else f['Size'],
                     #'viewed': f['viewed'] if self.is_v2 else f['Viewed']
             }
             id += 1
