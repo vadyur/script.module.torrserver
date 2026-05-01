@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <category label="Настройки">
-      <setting id="host" type="text" label="Host" default="127.0.0.1"/>
-      <setting id="port" type="number" label="Port" default="8090"/>
-      <setting id="use_https" type="bool" label="Use HTTPS (restart required)" default="false"/>
-      <setting id="save_in_database" type="bool" label="Save torrent in DB" default="true"/>
+    <!-- 30000: General settings -->
+    <category label="30000">
+      <!-- 30001: Host -->
+      <setting id="host" type="text" label="30001" default="127.0.0.1"/>
+      <!-- 30002: Port -->
+      <setting id="port" type="number" label="30002" default="8090"/>
+      <!-- 30003: Use HTTPS (restart required) -->
+      <setting id="use_https" type="bool" label="30003" default="false"/>
+      <!-- 30004: Save torrent in DB -->
+      <setting id="save_in_database" type="bool" label="30004" default="true"/>
 
-      <setting id="use_auth" type="bool" label="Use Authentication" default="false"/>
-      <setting id="login" type="text" label="Login" visible="eq(-1,true)" subsetting="true" default=""/>
-      <setting id="passw" type="text" label="Password" visible="eq(-2,true)" option="hidden" subsetting="true" default=""/>
+      <!-- 30005: Use Authentication -->
+      <setting id="use_auth" type="bool" label="30005" default="false"/>
+      <!-- 30006: Login -->
+      <setting id="login" type="text" label="30006" visible="eq(-1,true)" subsetting="true" default=""/>
+      <!-- 30007: Password -->
+      <setting id="passw" type="text" label="30007" visible="eq(-2,true)" option="hidden" subsetting="true" default=""/>
     </category>
 </settings>
