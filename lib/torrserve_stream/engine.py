@@ -515,9 +515,11 @@ class Engine(BaseEngine):
         else:
             return self._torrent_stat_v1()
 
-    def file_stat(self, index, torrent_stat=None):
+    def file_stat(self, index, torrent_stat=None) -> Mapping[str, Any]:
         if not torrent_stat:
             torrent_stat = self.torrent_stat()
+        if 'Files' not in torrent_stat:
+            return {}
         return torrent_stat['Files'][index]
 
     def files(self, torrent_stat=None) -> Iterable[FileItem]:
@@ -545,6 +547,9 @@ class Engine(BaseEngine):
 
     def play_url(self, index, torrent_stat=None) -> str:
         fs = self.file_stat(index, torrent_stat)
+        if not fs:
+            time.sleep(1)
+            fs = self.file_stat(index, torrent_stat)
 
         def real_url(url):
             from .restreamer import PORT
