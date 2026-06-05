@@ -1,0 +1,39 @@
+# Kodi Media Center language file
+# Addon Name: torrserver
+# Addon id: script.module.torrserver
+# Addon Provider: -=Vd=-
+#
+msgid ""
+msgstr ""
+
+msgctxt "#30000"
+msgid "General settings"
+msgstr "Setări generale"
+
+msgctxt "#30001"
+msgid "Host"
+msgstr "Host"
+
+msgctxt "#30002"
+msgid "Port"
+msgstr "Port"
+
+msgctxt "#30003"
+msgid "Use HTTPS (restart required)"
+msgstr "Folosește HTTPS (repornire necesară)"
+
+msgctxt "#30004"
+msgid "Save torrent in DB"
+msgstr "Salvează torrentul în DB"
+
+msgctxt "#30005"
+msgid "Use Authentication"
+msgstr "Folosește autentificare"
+
+msgctxt "#30006"
+msgid "Login"
+msgstr "Utilizator"
+
+msgctxt "#30007"
+msgid "Password"
+msgstr "Parolă"
