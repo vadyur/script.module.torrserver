@@ -72,6 +72,56 @@ class BaseEngine(object):
             kwargs['verify'] = False
         return requests.post(url, data=data, json=json, **kwargs)
 
+    def get_viewed_from_torrserver(self, hash, index):
+        try:
+            if not hash:
+                return None
+
+            url = self.make_url('/viewed')
+            r = self.POST(url, json={'action': 'list', 'hash': hash})
+
+            if r.status_code != requests.codes.ok:
+                self.log('get_viewed_from_torrserver: HTTP {}'.format(r.status_code))
+                return None
+
+            file_index = int(index) + 1
+
+            for item in r.json():
+                if item.get('Hash', item.get('hash')) == hash:
+                    item_index = int(item.get('FileIndex', item.get('file_index', -1)))
+
+                    if item_index == file_index:
+                        return float(item.get('TimeCode', item.get('timecode', 0)))
+
+        except Exception as e:
+            self.log('Error getting Viewed from TorrServer: {}'.format(str(e)))
+
+        return None
+
+    def save_viewed_to_torrserver(self, hash, index, timecode):
+        try:
+            if not hash:
+                return False
+
+            url = self.make_url('/viewed')
+            r = self.POST(url, json={
+                'action': 'set',
+                'hash': hash,
+                'file_index': int(index) + 1,
+                'timecode': float(timecode)
+            })
+
+            if r.status_code == requests.codes.ok:
+                self.log('Viewed saved to TorrServer: {} / {} / {}'.format(hash, index, timecode))
+                return True
+
+            self.log('save_viewed_to_torrserver: HTTP {}'.format(r.status_code))
+
+        except Exception as e:
+            self.log('Error saving Viewed to TorrServer: {}'.format(str(e)))
+
+        return False
+
     @property
     def is_v2(self):
         if 'version' not in self.__dict__:
