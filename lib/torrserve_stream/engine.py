@@ -72,50 +72,64 @@ class BaseEngine(object):
             kwargs['verify'] = False
         return requests.post(url, data=data, json=json, **kwargs)
 
-    def get_viewed_from_torrserver(self, hash, index):
+    def get_viewed_position(self, index: int) -> Optional[float]:
         try:
-            if not hash:
+            if not self.hash:
+                return None
+
+            if self.version < (2, 0, 142):
+                return None
+
+            settings = self.get_settings()
+            if not settings.get('TrackTimecode', False):
                 return None
 
             url = self.make_url('/viewed')
-            r = self.POST(url, json={'action': 'list', 'hash': hash})
+            r = self.POST(url, json={'action': 'list', 'hash': self.hash})
 
             if r.status_code != requests.codes.ok:
-                self.log('get_viewed_from_torrserver: HTTP {}'.format(r.status_code))
+                self.log('get_viewed_position: HTTP {}'.format(r.status_code))
                 return None
 
             file_index = int(index) + 1
 
             for item in r.json():
-                if item.get('Hash', item.get('hash')) == hash:
+                if item.get('Hash', item.get('hash')) == self.hash:
                     item_index = int(item.get('FileIndex', item.get('file_index', -1)))
 
                     if item_index == file_index:
-                        return float(item.get('TimeCode', item.get('timecode', 0)))
+                        return float(item.get('TimeCode', item.get('timecode', item.get('time_code', 0))))
 
         except Exception as e:
             self.log('Error getting Viewed from TorrServer: {}'.format(str(e)))
 
         return None
 
-    def save_viewed_to_torrserver(self, hash, index, timecode):
+    def set_viewed_position(self, index: int, timecode: float) -> bool:
         try:
-            if not hash:
+            if not self.hash:
+                return False
+
+            if self.version < (2, 0, 142):
+                return False
+
+            settings = self.get_settings()
+            if not settings.get('TrackTimecode', False):
                 return False
 
             url = self.make_url('/viewed')
             r = self.POST(url, json={
                 'action': 'set',
-                'hash': hash,
+                'hash': self.hash,
                 'file_index': int(index) + 1,
                 'timecode': float(timecode)
             })
 
             if r.status_code == requests.codes.ok:
-                self.log('Viewed saved to TorrServer: {} / {} / {}'.format(hash, index, timecode))
+                self.log('Viewed saved to TorrServer: {} / {} / {}'.format(self.hash, index, timecode))
                 return True
 
-            self.log('save_viewed_to_torrserver: HTTP {}'.format(r.status_code))
+            self.log('set_viewed_position: HTTP {}'.format(r.status_code))
 
         except Exception as e:
             self.log('Error saving Viewed to TorrServer: {}'.format(str(e)))
@@ -245,6 +259,19 @@ class BaseEngine(object):
 
     def restart(self):
         self.request('restart', method='GET')
+
+    def get_settings(self) -> dict:
+        url = self.make_url('/settings')
+        r = self.POST(url, json={'action': 'get'})
+        r.raise_for_status()
+        return r.json()
+
+    def set_settings(self, **kwargs) -> bool:
+        cfg = self.get_settings()
+        cfg.update(kwargs)
+        url = self.make_url('/settings')
+        r = self.POST(url, json={'action': 'set', 'sets': cfg})
+        return r.status_code == requests.codes.ok
 
     def rem(self):
         self.request('rem', data={'Hash': self.hash})
