@@ -217,13 +217,16 @@ class Player(xbmc.Player):
                 _log(e)
 
     def loop(self):
-        while not xbmc.abortRequested and not self.isPlaying():
-            xbmc.sleep(100)
+        _monitor = xbmc.Monitor()
+        while not _monitor.abortRequested() and not self.isPlaying():
+            if _monitor.waitForAbort(0.1):
+                return
 
         _log('************************ START Playing ***********************')
 
-        while not xbmc.abortRequested and self.isPlaying():
-            xbmc.sleep(1000)
+        while not _monitor.abortRequested() and self.isPlaying():
+            if _monitor.waitForAbort(1):
+                return
             self.UpdateProgress()
 
         _log('************************ FINISH Playing ***********************')
