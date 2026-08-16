@@ -85,7 +85,7 @@ class BaseEngine(object):
                 return None
 
             url = self.make_url('/viewed')
-            r = self.POST(url, json={'action': 'list', 'hash': self.hash})
+            r = self.POST(url, json={'action': 'list', 'hash': self.hash}, timeout=10)
 
             if r.status_code != requests.codes.ok:
                 self.log('get_viewed_position: HTTP {}'.format(r.status_code))
@@ -123,7 +123,7 @@ class BaseEngine(object):
                 'hash': self.hash,
                 'file_index': int(index) + 1,
                 'timecode': float(timecode)
-            })
+            }, timeout=10)
 
             if r.status_code == requests.codes.ok:
                 self.log('Viewed saved to TorrServer: {} / {} / {}'.format(self.hash, index, timecode))
