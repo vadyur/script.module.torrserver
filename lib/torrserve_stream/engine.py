@@ -8,11 +8,11 @@ from .V2 import V2toV1Adapter, V2toV1ListAdapter, V2toV1FilesAdapter
 from sys import version_info
 
 if version_info >= (3, 0):
-    from urllib.parse import urlparse, unquote_plus, quote
+    from urllib.parse import urlparse, unquote, quote
     from urllib.request import url2pathname
 else:
     from urlparse import urlparse   # type: ignore
-    from urllib import unquote_plus, url2pathname, quote # type: ignore
+    from urllib import unquote, url2pathname, quote # type: ignore
 
 class PlayableItem(TypedDict):
     index: int
@@ -753,11 +753,11 @@ class Engine(BaseEngine):
 
         m = re.search(v2_pattern, url)
         if m:
-            return unquote_plus(m.group(1))
+            return unquote(m.group(1))
 
         m = re.search(v1_pattern, url)
         if m:
-            return unquote_plus(m.group(1))
+            return unquote(m.group(1))
 
 
     def get_art(self) -> Mapping[str, Any]:
