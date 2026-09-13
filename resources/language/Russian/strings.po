@@ -37,3 +37,27 @@ msgstr "Логин"
 msgctxt "#30007"
 msgid "Password"
 msgstr "Пароль"
+
+msgctxt "#30010"
+msgid "Downloaded"
+msgstr "Загружено"
+
+msgctxt "#30011"
+msgid "from"
+msgstr "из"
+
+msgctxt "#30012"
+msgid "Speed"
+msgstr "Скорость"
+
+msgctxt "#30013"
+msgid "Seeders"
+msgstr "Раздачи"
+
+msgctxt "#30014"
+msgid "Active"
+msgstr "Активные"
+
+msgctxt "#30015"
+msgid "Total"
+msgstr "Всего"

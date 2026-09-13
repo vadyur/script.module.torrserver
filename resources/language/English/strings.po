@@ -37,3 +37,27 @@ msgstr ""
 msgctxt "#30007"
 msgid "Password"
 msgstr ""
+
+msgctxt "#30010"
+msgid "Downloaded"
+msgstr ""
+
+msgctxt "#30011"
+msgid "from"
+msgstr ""
+
+msgctxt "#30012"
+msgid "Speed"
+msgstr ""
+
+msgctxt "#30013"
+msgid "Seeders"
+msgstr ""
+
+msgctxt "#30014"
+msgid "Active"
+msgstr ""
+
+msgctxt "#30015"
+msgid "Total"
+msgstr ""

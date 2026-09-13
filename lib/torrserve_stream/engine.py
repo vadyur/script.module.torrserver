@@ -5,6 +5,7 @@ from typing import Dict, List, Any, Optional, Iterable, TypedDict, Mapping, Call
 from dataclasses import dataclass
 
 from .V2 import V2toV1Adapter, V2toV1ListAdapter, V2toV1FilesAdapter
+from .torrserver_types import PlayableItem, FileItem, FFProbeResult
 from sys import version_info
 
 if version_info >= (3, 0):
@@ -13,16 +14,6 @@ if version_info >= (3, 0):
 else:
     from urlparse import urlparse   # type: ignore
     from urllib import unquote, url2pathname, quote # type: ignore
-
-class PlayableItem(TypedDict):
-    index: int
-    name: str
-    size: int
-
-class FileItem(TypedDict):
-    file_id: int
-    path: str
-    size: int
 
 def _u(s):
     if version_info >= (3, 0):
@@ -611,6 +602,17 @@ class Engine(BaseEngine):
             }
             id += 1
 
+    def ffprobe(self, index: int) -> Optional[FFProbeResult]:
+        try:
+            url = self.make_url('/ffp/{}/{}'.format(self.hash, index + 1))
+            r = self.GET(url)
+            if r.status_code == requests.codes.ok:
+                return r.json()
+            self.log('ffprobe: HTTP {}'.format(r.status_code))
+        except Exception as e:
+            self.log('ffprobe error: {}'.format(str(e)))
+        return None
+
     def get_ts_index(self, name) -> Optional[int]:
         def name_in_path(name, path):
             if '/' in name and '/' in path:
@@ -743,6 +745,13 @@ class Engine(BaseEngine):
             m = re.search(prefix + r'(\w{40})', url)
             if m:
                 return m.group(1)
+
+    @staticmethod
+    def extract_index_from_play_url(url: str) -> Optional[int]:
+        import re
+        m = re.search(r'[?&]index=(\d+)', url)
+        if m:
+            return int(m.group(1))
 
     @staticmethod
     def extract_filename_from_play_url(url) -> Optional[str]:

@@ -6,5 +6,6 @@ from .engine import Engine
 try:
     from .player import Player
     from .settings import Settings
+    from .overlay import Overlay
 except ImportError:
     pass
