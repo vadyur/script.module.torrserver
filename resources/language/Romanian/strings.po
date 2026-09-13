@@ -37,3 +37,27 @@ msgstr "Utilizator"
 msgctxt "#30007"
 msgid "Password"
 msgstr "Parolă"
+
+msgctxt "#30010"
+msgid "Downloaded"
+msgstr "Descărcat"
+
+msgctxt "#30011"
+msgid "from"
+msgstr "din"
+
+msgctxt "#30012"
+msgid "Speed"
+msgstr "Viteză"
+
+msgctxt "#30013"
+msgid "Seeders"
+msgstr "Seederi"
+
+msgctxt "#30014"
+msgid "Active"
+msgstr "Active"
+
+msgctxt "#30015"
+msgid "Total"
+msgstr "Total"
