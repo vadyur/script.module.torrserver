@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 import os
 import sys
-from typing import Optional
+from typing import Dict, List, Optional
 import xbmc, xbmcgui, xbmcaddon
 
 from .engine import Engine
@@ -23,13 +23,27 @@ else:
         return path.decode(sys_enc).encode('utf-8')
 
 
+def _get_language() -> str:
+    try:
+        lang = xbmc.getLanguage(xbmc.ISO_639_1, True)
+        if not lang:
+            lang = "en"
+        return lang
+    except Exception:
+        return "en"
+
+
+_UNITS: Dict[str, List[str]] = {
+    "en": ["B", "KB", "MB", "GB", "TB"],
+    "ru": ["Б", "Кб", "Мб", "Гб", "Тб"],
+}
+
+
 def _humanizeSize(size):
-    B = u"б"
-    KB = u"Кб"
-    MB = u"Мб"
-    GB = u"Гб"
-    TB = u"Тб"
-    UNITS = [B, KB, MB, GB, TB]
+    UNITS = _UNITS.get(_get_language())
+    if UNITS is None:
+        UNITS = _UNITS['en']
+
     HUMANFMT = "%.2f %s"
     HUMANRADIX = 1024.
 

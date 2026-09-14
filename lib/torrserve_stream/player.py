@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from typing import Any
 
 from . import engine
+from .overlay import Overlay
 import xbmc, xbmcgui, xbmcplugin, time, sys
 
 class OurDialogProgress(xbmcgui.DialogProgress):
@@ -30,22 +31,6 @@ class OurDialogProgress(xbmcgui.DialogProgress):
             xbmcgui.DialogProgress.update(self, int(percent), message)
 
 
-def humanizeSize(size):
-    B = u"б"
-    KB = u"Кб"
-    MB = u"Мб"
-    GB = u"Гб"
-    TB = u"Тб"
-    UNITS = [B, KB, MB, GB, TB]
-    HUMANFMT = "%.2f %s"
-    HUMANRADIX = 1024.
-
-    for u in UNITS[:-1]:
-        if size < HUMANRADIX : return HUMANFMT % (size, u)
-        size /= HUMANRADIX
-
-    return HUMANFMT % (size,  UNITS[-1])
-
 def _log(s):
     import sys
     def make_message(_s):
@@ -70,17 +55,7 @@ class Player(xbmc.Player):
 
         try:
             xbmc.Player.__init__(self)
-            self.show_overlay = False
-
-            self.fs_video = xbmcgui.Window(12005)
-
-            x = 20
-            y = 180
-            w = self.fs_video.getWidth()
-            h = 100
-
-            self.info_label = xbmcgui.ControlLabel(x, y, w, h, '', textColor='0xFF00EE00', font='font16')
-            self.info_label_bg = xbmcgui.ControlLabel(x+2, y+2, w, h, '', textColor='0xAA000000', font='font16')
+            self._overlay = None
 
             from .settings import Settings
             s = Settings()
@@ -107,6 +82,8 @@ class Player(xbmc.Player):
             self.file_id = sort_index
             self.engine.start(sort_index)
 
+            self._overlay = Overlay(hash=self.engine.hash, index=self.file_id)
+
             if self.prebuffer():
                 _log('Prebuffer success')
 
@@ -127,6 +104,7 @@ class Player(xbmc.Player):
             _log(e)
 
     def prebuffer(self):
+        from .overlay import _humanizeSize
         pDialog = OurDialogProgress()
         pDialog.create("TorrServer", "Wait for info....")
         success = False
@@ -152,7 +130,7 @@ class Player(xbmc.Player):
                 pDialog.close()
                 return True
 
-            downSpeed = humanizeSize(st.get('DownloadSpeed', 0))
+            downSpeed = _humanizeSize(st.get('DownloadSpeed', 0))
             preloadedBytes = st.get('PreloadedBytes', 0)
             preloadSize = st.get('PreloadSize', 0)
             line2 = u'S:{0} A:{1} T:{2}'.format(
@@ -162,8 +140,8 @@ class Player(xbmc.Player):
 
             line3 = u"D: {0}/сек [{1}/{2}]".format(
                 downSpeed,
-                humanizeSize(preloadedBytes),
-                humanizeSize(preloadSize))
+                _humanizeSize(preloadedBytes),
+                _humanizeSize(preloadSize))
 
             if preloadSize > 0 and preloadedBytes > 0:
                 prc = preloadedBytes * 100 / preloadSize
@@ -182,40 +160,6 @@ class Player(xbmc.Player):
 
         return success
 
-
-    def _show_progress(self):
-        if not self.show_overlay:
-            self.fs_video.addControls([self.info_label_bg, self.info_label])
-            self.show_overlay = True
-
-    def _hide_progress(self):
-        if self.show_overlay:
-            self.fs_video.removeControls([self.info_label_bg, self.info_label])
-            self.show_overlay = False
-
-    def UpdateProgress(self):
-        if self.show_overlay:
-            info = self.engine.stat()
-            try:
-                fstats = info['FileStats']
-                item = fstats[self.file_id]
-                _log(item)
-                size		= int(item['Length'])
-                downloaded	= int(info['LoadedSize'])
-                dl_speed	= int(info['DownloadSpeed'])
-                percent = float(downloaded) * 100 / size
-                if percent >= 0:
-                    heading = u"{0} МB из {1} МB - {2}".format(downloaded/1024/1024, size/1024/1024, int(percent)) + r'%' + '\n'
-                    if percent < 100:
-                        heading += u"Скорость загрузки: {0} KB/сек\n".format(dl_speed/1024)
-                        heading += u"Сиды: {0}    Пиры: {1}".format(info['ConnectedSeeders'], info['ActivePeers'])
-
-                    self.info_label.setLabel(heading)
-                    self.info_label_bg.setLabel(heading)
-            except BaseException as e:
-                _log('************************ ERROR ***********************')
-                _log(e)
-
     def loop(self):
         _monitor = xbmc.Monitor()
         while not _monitor.abortRequested() and not self.isPlaying():
@@ -227,14 +171,27 @@ class Player(xbmc.Player):
         while not _monitor.abortRequested() and self.isPlaying():
             if _monitor.waitForAbort(1):
                 return
-            self.UpdateProgress()
+            if self._overlay and self._overlay.visible:
+                self._overlay.update()
 
         _log('************************ FINISH Playing ***********************')
 
-    def __del__(self):				self._hide_progress()
-    def onPlayBackPaused(self):		self._show_progress()
-    def onPlayBackResumed(self):	self._hide_progress()
-    def onPlayBackEnded(self):		self._hide_progress()
-    def onPlayBackStopped(self):	self._hide_progress()
+    def __del__(self):
+        if self._overlay:
+            self._overlay.hide()
 
+    def onPlayBackPaused(self):
+        if self._overlay:
+            self._overlay.show()
 
+    def onPlayBackResumed(self):
+        if self._overlay:
+            self._overlay.hide()
+
+    def onPlayBackEnded(self):
+        if self._overlay:
+            self._overlay.hide()
+
+    def onPlayBackStopped(self):
+        if self._overlay:
+            self._overlay.hide()
