@@ -56,8 +56,36 @@ msgstr "Seederi"
 
 msgctxt "#30014"
 msgid "Active"
-msgstr "Active"
+msgstr "Activi"
 
 msgctxt "#30015"
 msgid "Total"
 msgstr "Total"
+
+msgctxt "#30016"
+msgid "Preloading"
+msgstr "Preîncărcare"
+
+msgctxt "#30017"
+msgid "Codec"
+msgstr "Codec"
+
+msgctxt "#30018"
+msgid "Resolution"
+msgstr "Rezoluție"
+
+msgctxt "#30019"
+msgid "Duration"
+msgstr "Durată"
+
+msgctxt "#30020"
+msgid "Bitrate"
+msgstr "Bitrate"
+
+msgctxt "#30021"
+msgid "Wait for info..."
+msgstr "Se așteaptă informațiile..."
+
+msgctxt "#30022"
+msgid "Connected: {0} | Active: {1} | Total: {2}"
+msgstr "Conectați: {0} | Activi: {1} | Total: {2}"
