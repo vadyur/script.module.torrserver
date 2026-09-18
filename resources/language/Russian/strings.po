@@ -61,3 +61,31 @@ msgstr "Активные"
 msgctxt "#30015"
 msgid "Total"
 msgstr "Всего"
+
+msgctxt "#30016"
+msgid "Preloading"
+msgstr "Загрузка"
+
+msgctxt "#30017"
+msgid "Codec"
+msgstr "Кодек"
+
+msgctxt "#30018"
+msgid "Resolution"
+msgstr "Разрешение"
+
+msgctxt "#30019"
+msgid "Duration"
+msgstr "Длительность"
+
+msgctxt "#30020"
+msgid "Bitrate"
+msgstr "Битрейт"
+
+msgctxt "#30021"
+msgid "Wait for info..."
+msgstr "Ждем получения информации о раздаче..."
+
+msgctxt "#30022"
+msgid "Connected: {0} | Active: {1} | Total: {2}"
+msgstr "Подключено: {0} | Активных: {1} | Всего: {2}"

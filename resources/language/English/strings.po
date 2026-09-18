@@ -61,3 +61,31 @@ msgstr ""
 msgctxt "#30015"
 msgid "Total"
 msgstr ""
+
+msgctxt "#30016"
+msgid "Preloading"
+msgstr ""
+
+msgctxt "#30017"
+msgid "Codec"
+msgstr ""
+
+msgctxt "#30018"
+msgid "Resolution"
+msgstr ""
+
+msgctxt "#30019"
+msgid "Duration"
+msgstr ""
+
+msgctxt "#30020"
+msgid "Bitrate"
+msgstr ""
+
+msgctxt "#30021"
+msgid "Wait for info..."
+msgstr ""
+
+msgctxt "#30022"
+msgid "Connected: {0} | Active: {1} | Total: {2}"
+msgstr ""

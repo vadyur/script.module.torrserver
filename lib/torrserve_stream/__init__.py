@@ -7,5 +7,6 @@ try:
     from .player import Player
     from .settings import Settings
     from .overlay import Overlay
+    from .preload import PreloadDialog
 except ImportError:
     pass

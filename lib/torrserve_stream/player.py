@@ -4,7 +4,7 @@ from __future__ import absolute_import
 from typing import Any
 
 from . import engine
-from .overlay import Overlay
+from .overlay import Overlay, _humanizeSize
 import xbmc, xbmcgui, xbmcplugin, time, sys
 
 class OurDialogProgress(xbmcgui.DialogProgress):
@@ -104,61 +104,9 @@ class Player(xbmc.Player):
             _log(e)
 
     def prebuffer(self):
-        from .overlay import _humanizeSize
-        pDialog = OurDialogProgress()
-        pDialog.create("TorrServer", "Wait for info....")
-        success = False
-        counter = 0
-        while True:
-            if counter > 60:
-                return False
-
-            if pDialog.iscanceled() :
-                pDialog.close()
-                self.engine.drop()
-                break
-
-            time.sleep(0.5)
-            st = self.engine.stat()
-
-            if 'message' in st:
-                counter += 1
-                continue
-
-            stat_id: Any = st.get('TorrentStatus', -1)
-            if stat_id > 2 and self.engine.is_v2:
-                pDialog.close()
-                return True
-
-            downSpeed = _humanizeSize(st.get('DownloadSpeed', 0))
-            preloadedBytes = st.get('PreloadedBytes', 0)
-            preloadSize = st.get('PreloadSize', 0)
-            line2 = u'S:{0} A:{1} T:{2}'.format(
-                st.get('ConnectedSeeders', 0),
-                st.get('ActivePeers', 0),
-                st.get('TotalPeers', 0))
-
-            line3 = u"D: {0}/сек [{1}/{2}]".format(
-                downSpeed,
-                _humanizeSize(preloadedBytes),
-                _humanizeSize(preloadSize))
-
-            if preloadSize > 0 and preloadedBytes > 0:
-                prc = preloadedBytes * 100 / preloadSize
-                if prc > 100:
-                    prc = 100
-                pDialog.update(prc, line2, line3)
-
-                stat_s = st.get('TorrentStatusString')
-                _log(stat_s)
-
-                if  (preloadedBytes >= preloadSize) or \
-                    (prc > 0 and stat_id != 2): # 2 - 'Torrent preload'
-                    success = True
-                    pDialog.close()
-                    break
-
-        return success
+        from .preload import PreloadDialog
+        dialog = PreloadDialog(engine=self.engine, index=self.file_id)
+        return dialog.run()
 
     def loop(self):
         _monitor = xbmc.Monitor()
