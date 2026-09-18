@@ -56,7 +56,7 @@ msgstr "Seederi"
 
 msgctxt "#30014"
 msgid "Active"
-msgstr "Activ"
+msgstr "Activi"
 
 msgctxt "#30015"
 msgid "Total"
