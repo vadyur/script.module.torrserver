@@ -79,11 +79,13 @@ class Overlay:
     def show(self):
         if not self.visible:
             self._window.addControls([self._background, self._label])
+            self._window.setProperty('torrserve_overlay_active', '1')
             self.visible = True
 
     def hide(self):
         if self.visible:
             self._window.removeControls([self._background, self._label])
+            self._window.clearProperty('torrserve_overlay_active')
             self.visible = False
 
     def update(self):

@@ -51,7 +51,7 @@ def _log(s):
 
 class Player(xbmc.Player):
 
-    def __init__(self, uri=None, path=None, data=None, index=None, sort_index=None, name=None):
+    def __init__(self, uri=None, path=None, data=None, index=None, sort_index=None, name=None, art=None, use_overlay=True):
 
         try:
             xbmc.Player.__init__(self)
@@ -78,11 +78,19 @@ class Player(xbmc.Player):
                         sort_index = self.engine.get_ts_index(name)
                     elif index is not None:
                         sort_index = self.engine.id_to_files_index(index)
+                    else:
+                        file_names = []
+                        for f in self.engine.files(ts):
+                            file_names.append('%s (%s)' % (f['path'], _humanizeSize(f['size'])))
+                        chosen = xbmcgui.Dialog().select('TorrServer', file_names)
+                        if chosen < 0:
+                            return
+                        sort_index = chosen
 
             self.file_id = sort_index
             self.engine.start(sort_index)
 
-            self._overlay = Overlay(hash=self.engine.hash, index=self.file_id)
+            self._overlay = Overlay(hash=self.engine.hash, index=self.file_id) if use_overlay else None
 
             if self.prebuffer():
                 _log('Prebuffer success')
@@ -90,6 +98,12 @@ class Player(xbmc.Player):
                 playable_url = self.engine.play_url(sort_index)
                 handle = int(sys.argv[1])
                 list_item = xbmcgui.ListItem(path=playable_url)
+
+                if art:
+                    if callable(art):
+                        art = art()
+                    if isinstance(art, dict):
+                        list_item.setArt(art)
 
                 xbmcplugin.setResolvedUrl(handle, True, list_item)
 
