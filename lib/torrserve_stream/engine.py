@@ -352,7 +352,8 @@ class Engine(BaseEngine):
 
     m3u_cache = {}
 
-    def _wait_for_data(self, timeout=10):
+    def _wait_for_data(self, timeout=10) -> bool:
+        ''' waits timeout seconds for torrent metadata, False if not ready '''
         self.log('_wait_for_data')
         #files = self.list()
         for n in range(timeout*2):
@@ -363,10 +364,13 @@ class Engine(BaseEngine):
                 if st['TorrentStatusString'] != 'Torrent working':
                     time.sleep(0.5)
                 else:
-                    break
+                    return True
             except KeyError:
                 self.log('"TorrentStatusString" not in stat')
                 time.sleep(0.5)
+
+        self.log('_wait_for_data: timed out')
+        return False
 
     def __init__(self,
                 uri=None,
@@ -606,6 +610,9 @@ class Engine(BaseEngine):
         ''' yields FileItem with 0-based file_id '''
         if not torrent_stat:
             torrent_stat = self.torrent_stat()
+        if 'Files' not in torrent_stat:
+            self.log('files: no file list in torrent stat')
+            return
         id = 0
         for f in torrent_stat['Files']:
             yield { 'file_id': id,
