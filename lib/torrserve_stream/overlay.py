@@ -58,6 +58,7 @@ def _humanizeSize(size):
 class Overlay:
 
     def __init__(self, hash: str, index: Optional[int] = None):
+        ''' index: 0-based file index, None - whole torrent '''
         self._hash = hash
         self._index = index
 

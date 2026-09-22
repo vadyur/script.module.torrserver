@@ -2,13 +2,13 @@ from typing import List, TypedDict
 
 
 class PlayableItem(TypedDict):
-    index: int
+    index: int      # 0-based position in the .torrent file list
     name: str
     size: int
 
 
 class FileItem(TypedDict):
-    file_id: int
+    file_id: int    # 0-based index in Engine.files()
     path: str
     size: int
 

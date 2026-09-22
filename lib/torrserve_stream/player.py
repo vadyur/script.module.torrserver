@@ -52,6 +52,9 @@ def _log(s):
 class Player(xbmc.Player):
 
     def __init__(self, uri=None, path=None, data=None, index=None, sort_index=None, name=None, art=None, use_overlay=True):
+        ''' sort_index: 0-based file index
+            index:      0-based playable_items() index
+        '''
 
         try:
             xbmc.Player.__init__(self)

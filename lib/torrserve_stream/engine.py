@@ -1,3 +1,8 @@
+# File index bases:
+#   0-based - position in files()/file_stat(): file_id, sort_index, start_index
+#   1-based - TorrServer's own: &index= in urls, id in file_stats,
+#             file_index in /viewed, /ffp/<hash>/<n>
+
 import requests
 import json
 import time
@@ -64,6 +69,7 @@ class BaseEngine(object):
         return requests.post(url, data=data, json=json, **kwargs)
 
     def get_viewed_position(self, index: int) -> Optional[float]:
+        ''' index: 0-based file index '''
         try:
             if not self.hash:
                 return None
@@ -97,6 +103,7 @@ class BaseEngine(object):
         return None
 
     def set_viewed_position(self, index: int, timecode: float) -> bool:
+        ''' index: 0-based file index '''
         try:
             if not self.hash:
                 return False
@@ -409,19 +416,13 @@ class Engine(BaseEngine):
         return self._get_playable_items()
 
     def _get_playable_items(self) -> List[PlayableItem]:
+        ''' PlayableItem['index']: 0-based position in the .torrent file list '''
 
         if self._playable_items:
             return self._playable_items
 
         if not self.data:
-            st = self.stat()
-            if 'RealIdFileStats' not in st:
-                raise NotImplementedError('magnet links not supported for torrent indexes, use sorted_index or name')
-            if st.get('RealIdFileStats') is None:
-                raise NotImplementedError('RealIdFileStats is disabled in TorrServer 1.1.77_6, please enable it')
-            for i in st['RealIdFileStats']: #it only torrserver 1.1.77_6 with RealIdFileStats and &ind=
-                self._playable_items.append({'index': i['Id'], 'name': i['Path'], 'size': i['Length']})
-            return self._playable_items
+            raise NotImplementedError('magnet links not supported for torrent indexes, use sorted_index or name')
 
         if version_info >= (3, 0):
             from .bencodepy import bdecode
@@ -512,6 +513,7 @@ class Engine(BaseEngine):
         t.start()
 
     def id_to_files_index(self, file_id):
+        ''' file_id: 0-based playable_items() index -> 0-based files() index '''
         ts = self.torrent_stat()
 
         try:
@@ -529,6 +531,7 @@ class Engine(BaseEngine):
         return file_id
 
     def _start_v2(self, start_index: int):
+        ''' start_index: 0-based file index '''
         preload_url = self.make_url("/stream?link={}&index={}&preload".format(
             self.hash, start_index+1
         ))
@@ -536,6 +539,7 @@ class Engine(BaseEngine):
         self.start_preload(preload_url)
 
     def _start_v1(self, start_index: int):
+        ''' start_index: 0-based file index '''
         for n in range(5):
             self.log('Try # {0}'.format(n))
             try:
@@ -558,6 +562,7 @@ class Engine(BaseEngine):
         self.log('Preload not started')
 
     def start(self, start_index=None):
+        ''' start_index: 0-based file index '''
         self.log('Engine start')
 
         if start_index is None:
@@ -584,13 +589,19 @@ class Engine(BaseEngine):
             return self._torrent_stat_v1()
 
     def file_stat(self, index, torrent_stat=None) -> Mapping[str, Any]:
+        ''' index: 0-based file index '''
         if not torrent_stat:
             torrent_stat = self.torrent_stat()
         if 'Files' not in torrent_stat:
             return {}
-        return torrent_stat['Files'][index]
+        files = torrent_stat['Files']
+        if index < 0 or index >= len(files):
+            self.log('file_stat: index {} out of range, {} file(s) in torrent'.format(index, len(files)))
+            return {}
+        return files[index]
 
     def files(self, torrent_stat=None) -> Iterable[FileItem]:
+        ''' yields FileItem with 0-based file_id '''
         if not torrent_stat:
             torrent_stat = self.torrent_stat()
         id = 0
@@ -603,6 +614,7 @@ class Engine(BaseEngine):
             id += 1
 
     def ffprobe(self, index: int) -> Optional[FFProbeResult]:
+        ''' index: 0-based file index '''
         try:
             url = self.make_url('/ffp/{}/{}'.format(self.hash, index + 1))
             r = self.GET(url)
@@ -614,6 +626,7 @@ class Engine(BaseEngine):
         return None
 
     def get_ts_index(self, name) -> Optional[int]:
+        ''' returns 0-based files() index by file name '''
         def name_in_path(name, path):
             if '/' in name and '/' in path:
                 return name == path
@@ -625,10 +638,14 @@ class Engine(BaseEngine):
                 return f['file_id']
 
     def play_url(self, index, torrent_stat=None) -> str:
+        ''' index: 0-based file index '''
         fs = self.file_stat(index, torrent_stat)
         if not fs:
             time.sleep(1)
             fs = self.file_stat(index, torrent_stat)
+        if not fs:
+            self.log('play_url: no file stat for index {}'.format(index))
+            return ''
 
         def real_url(url):
             from .restreamer import PORT
@@ -748,6 +765,7 @@ class Engine(BaseEngine):
 
     @staticmethod
     def extract_index_from_play_url(url: str) -> Optional[int]:
+        ''' returns the 1-based index= value from url '''
         import re
         m = re.search(r'[?&]index=(\d+)', url)
         if m:

@@ -65,6 +65,7 @@ def format_ffprobe(data):
 class PreloadDialog:
 
     def __init__(self, engine, index=None):
+        ''' index: 0-based file index '''
         self._engine = engine
         self._index = index
         self._ffprobe_data = None
