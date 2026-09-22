@@ -1,7 +1,9 @@
 # File index bases:
-#   0-based - position in files()/file_stat(): file_id, sort_index, start_index
+#   0-based - position in files()/file_stat(): file_id, sort_index, start_index.
+#             The only base this module exposes.
 #   1-based - TorrServer's own: &index= in urls, id in file_stats,
-#             file_index in /viewed, /ffp/<hash>/<n>
+#             file_index in /viewed, /ffp/<hash>/<n>. Converted inline here
+#             and never returned to callers.
 
 import requests
 import json
@@ -764,12 +766,12 @@ class Engine(BaseEngine):
                 return m.group(1)
 
     @staticmethod
-    def extract_index_from_play_url(url: str) -> Optional[int]:
-        ''' returns the 1-based index= value from url '''
+    def extract_file_index_from_play_url(url: str) -> Optional[int]:
+        ''' returns 0-based file index from url ( index= there is 1-based ) '''
         import re
         m = re.search(r'[?&]index=(\d+)', url)
         if m:
-            return int(m.group(1))
+            return int(m.group(1)) - 1
 
     @staticmethod
     def extract_filename_from_play_url(url) -> Optional[str]:
