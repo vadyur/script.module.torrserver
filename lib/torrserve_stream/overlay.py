@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import xbmc, xbmcgui, xbmcaddon
 
 from .engine import Engine
@@ -147,10 +147,29 @@ class Overlay:
         return ov_image
 
     @staticmethod
-    def _get_skin_resolution():
+    def _get_skin_resolution() -> Tuple[int, int]:
+        ''' Координатная сетка скина. Kodi берёт из <res> скина разрешение с соотношением сторон,
+            ближайшим к экрану; первый <res> часто 4:3 (1920x1440), из-за чего полоса уезжала вниз.
+        '''
         import xml.etree.ElementTree as Et
         from xbmcvfs import translatePath
         skin_path = translatePath('special://skin/')
         tree = Et.parse(os.path.join(skin_path, 'addon.xml'))
-        res = tree.findall('./extension/res')[0]
-        return int(res.attrib['width']), int(res.attrib['height'])
+        resolutions = [(int(r.attrib['width']), int(r.attrib['height']), r.attrib.get('default') == 'true')
+                       for r in tree.findall('./extension/res')]
+
+        try:
+            screen_w = int(xbmc.getInfoLabel('System.ScreenWidth'))
+            screen_h = int(xbmc.getInfoLabel('System.ScreenHeight'))
+        except ValueError:
+            screen_w = screen_h = 0
+
+        if screen_w and screen_h:
+            aspect = float(screen_w) / screen_h
+            w, h, _ = min(resolutions, key=lambda r: abs(float(r[0]) / r[1] - aspect))
+            return w, h
+
+        for w, h, default in resolutions:
+            if default:
+                return w, h
+        return resolutions[0][0], resolutions[0][1]
