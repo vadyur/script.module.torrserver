@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import time
 import sys
+from typing import Optional
 import xbmc, xbmcgui, xbmcaddon
 
 from .overlay import _humanizeSize
@@ -64,12 +65,18 @@ def format_ffprobe(data):
 
 class PreloadDialog:
 
-    def __init__(self, engine, index=None):
-        ''' index: 0-based file index '''
+    def __init__(self, engine, index=None, max_timeout: float = 120, no_seeds_timeout: Optional[float] = None):
+        ''' index: 0-based file index
+            max_timeout: seconds to wait for the preload
+            no_seeds_timeout: give up earlier if nothing is downloaded and no seeders connected by then
+        '''
         self._engine = engine
         self._index = index
+        self._max_timeout = max_timeout
+        self._no_seeds_timeout = no_seeds_timeout
         self._ffprobe_data = None
         self._ffprobe_done = False
+        self.canceled = False   # True if run() returned False because the user pressed Cancel
 
     def run(self):
         pDialog = OurDialogProgress()
@@ -79,10 +86,11 @@ class PreloadDialog:
         started_at = time.time()
         min_display = 2.0
         timeout = 0
-        max_timeout = 120
+        max_timeout = self._max_timeout
 
         while True:
             if pDialog.iscanceled():
+                self.canceled = True
                 pDialog.close()
                 return False
 
@@ -119,6 +127,11 @@ class PreloadDialog:
             downSpeedH = _humanizeSize(downSpeed)
             preloadedBytes = st.get('PreloadedBytes', 0)
             preloadSize = st.get('PreloadSize', 0)
+
+            if self._no_seeds_timeout is not None and timeout > self._no_seeds_timeout \
+                    and not preloadedBytes and not st.get('ConnectedSeeders', 0):
+                pDialog.close()
+                return False
 
             line1 = format_ffprobe(self._ffprobe_data)
             if not line1:
